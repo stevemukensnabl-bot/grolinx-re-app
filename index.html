@@ -1,22 +1,3 @@
-<!-- Version stamp -->
-<script>
-  window.REI_APP_VERSION = "Enterprise v1.4 — 2025-09-05T" + new Date().toLocaleTimeString();
-  console.log("REI App Loaded:", window.REI_APP_VERSION);
-</script>
-<style>
-  .version-badge {
-    position: fixed; right: 12px; bottom: 10px; z-index: 9999;
-    background: rgba(20,20,20,.85); color: #fff; font: 12px/1.2 system-ui, sans-serif;
-    padding: 6px 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.25);
-  }
-  @media (prefers-color-scheme: light) {
-    .version-badge { background: rgba(255,255,255,.9); color: #111; }
-  }
-</style>
-<div class="version-badge" id="rei-version-badge"></div>
-<script>
-  document.getElementById('rei-version-badge').textContent = window.REI_APP_VERSION;
-</script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
