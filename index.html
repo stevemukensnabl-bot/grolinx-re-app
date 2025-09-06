@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Estate Investment Analyzer Pro</title>
+    <meta name="description" content="Professional real estate investment analysis tool with deal analyzer, portfolio tracking, and comprehensive reporting.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+    
+    <style>
+        /* Enhanced CSS with Theme Support */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-accent: #f0f9ff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-color: #3b82f6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1f2937;
+            --bg-secondary: #111827;
+            --bg-accent: #1e3a8a;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --border-color: #374151;
+            --accent-color: #60a5fa;
+            --success-color: #34d399;
+            --warning-color: #fbbf24;
+            --danger-color: #f87171;
+            --shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .reia-app {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--bg-secondary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .reia-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reia-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+
+        .reia-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+            position: relative;
+            z-index: 1;
+        }
+
+        .reia-header p {
+            margin: 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .reia-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .reia-nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .reia-nav-btn {
+            padding: 12px 24px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .reia-nav-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .reia-nav-btn:hover:not(.active) {
+            background: var(--bg-accent);
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
+        }
+
+        .reia-theme-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .reia-theme-toggle {
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .reia-theme-toggle:hover {
+            background: var(--bg-accent);
+            border-color: var(--accent-color);
+        }
+
+        .reia-section {
+            display: none;
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .reia-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .reia-section h2 {
+            margin: 0 0 30px 0;
+            color: var(--text-primary);
+            font-size: 2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .reia-form-group {
+            margin-bottom: 24px;
+        }
+
+        .reia-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .reia-input, .reia-select {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 16px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .reia-input:focus, .reia-select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .reia-btn {
+            background: var(--success-color);
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .reia-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .reia-btn.secondary {
+            background: var(--accent-color);
+        }
+
+        .reia-btn.secondary:hover {
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .reia-btn.danger {
+            background: var(--danger-color);
+        }
+
+        .reia-btn.danger:hover {
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+        }
+
+        .reia-results {
+            margin-top: 30px;
+            padding: 30px;
+            background: var(--bg-accent);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .reia-results h3 {
+            margin: 0 0 20px 0;
+            color: var(--text-primary);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .reia-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .reia-metric:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .reia-metric-label {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .reia-metric-value {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 18px;
+        }
+
+        .reia-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .reia-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .reia-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .reia-export-section {
+            margin-top: 30px;
+            padding: 30px;
+            background: var(--bg-accent);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .reia-export-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .reia-collapsible {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .reia-collapsible-header {
+            background: var(--bg-accent);
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .reia-collapsible-header:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .reia-collapsible-content {
+            padding: 0 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .reia-collapsible.active .reia-collapsible-content {
+            padding: 20px;
+            max-height: 1000px;
+        }
+
+        .reia-collapsible-toggle {
+            transition: transform 0.3s ease;
+        }
+
+        .reia-collapsible.active .reia-collapsible-toggle {
+            transform: rotate(180deg);
+        }
+
+        .reia-status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-excellent { background: var(--success-color); }
+        .status-good { background: var(--warning-color); }
+        .status-fair { background: #f97316; }
+        .status-poor { background: var(--danger-color); }
+
+        .reia-property-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .reia-property-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+            border-color: var(--accent-color);
+        }
+
+        @media (max-width: 768px) {
+            .reia-app {
+                padding: 15px;
+            }
+            
+            .reia-header h1 {
+                font-size: 2rem;
+            }
+            
+            .reia-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .reia-nav {
+                justify-content: center;
+            }
+            
+            .reia-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .reia-section {
+                padding: 20px;
+            }
+            
+            .reia-export-buttons {
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .reia-nav-btn {
+                flex: 1;
+                justify-content: center;
+            }
+            
+            .reia-metric {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: var(--success-color);
+        }
+
+        .notification.error {
+            background: var(--danger-color);
+        }
+
+        .notification.info {
+            background: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <div id="reia-app"></div>
+
+    <!-- XLSX Library (Simplified for basic functionality) -->
+    <script>
+        // Simplified XLSX implementation for basic CSV/Excel export
+        window.XLSX = {
+            version: "0.18.5",
+            utils: {
+                json_to_sheet: function(data) {
+                    if (!data || data.length === 0) return {};
+                    
+                    const headers = Object.keys(data[0]);
+                    let csv = headers.join(',') + '\n';
+                    
+                    data.forEach(row => {
+                        const values = headers.map(header => {
+                            let value = row[header] || '';
+                            // Escape commas and quotes
+                            if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                                value = '"' + value.replace(/"/g, '""') + '"';
+                            }
+                            return value;
+                        });
+                        csv += values.join(',') + '\n';
+                    });
+                    
+                    return { csv: csv };
+                }
+            },
+            write: function(wb, opts) {
+                return wb.csv || '';
+            }
+        };
+
+        // Simple file download function
+        function downloadFile(content, filename, contentType = 'text/csv') {
+            const blob = new Blob([content], { type: contentType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+
+    <script>
+        // Enhanced Real Estate Investment App - Production Ready
+        class EnhancedREIAApp {
+            constructor() {
+                this.currentSection = 'dashboard';
+                this.theme = localStorage.getItem('reia-theme') || 'light';
+                this.properties = [];
+                this.investors = [];
+                this.analyses = [];
+                this.currentAnalysis = null;
+                this.init();
+            }
+
+            init() {
+                this.applyTheme();
+                this.render();
+                this.attachEventListeners();
+                this.loadSampleData();
+            }
+
+            applyTheme() {
+                document.documentElement.setAttribute('data-theme', this.theme);
+            }
+
+            toggleTheme() {
+                this.theme = this.theme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('reia-theme', this.theme);
+                this.applyTheme();
+                this.showNotification('Theme updated successfully!', 'success');
+            }
+
+            showNotification(message, type = 'info') {
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => notification.classList.add('show'), 100);
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => document.body.removeChild(notification), 300);
+                }, 3000);
+            }
+
+            render() {
+                const app = document.getElementById('reia-app');
+                app.innerHTML = `
+                    <div class="reia-app">
+                        <div class="reia-header">
+                            <h1>🏠 Real Estate Investment Analyzer Pro</h1>
+                            <p>Professional deal analysis, portfolio tracking, and investment management</p>
+                        </div>
+
+                        <div class="reia-controls">
+                            <div class="reia-nav">
+                                <button class="reia-nav-btn active" data-section="dashboard">
+                                    📊 Dashboard
+                                </button>
+                                <button class="reia-nav-btn" data-section="finder">
+                                    🔍 Property Finder
+                                </button>
+                                <button class="reia-nav-btn" data-section="analyzer">
+                                    📈 Deal Analyzer
+                                </button>
+                                <button class="reia-nav-btn" data-section="portfolio">
+                                    💼 Portfolio
+                                </button>
+                            </div>
+                            
+                            <div class="reia-theme-controls">
+                                <button class="reia-theme-toggle" onclick="reiaApp.toggleTheme()">
+                                    ${this.theme === 'light' ? '🌙' : '☀️'} ${this.theme === 'light' ? 'Dark' : 'Light'} Mode
+                                </button>
+                            </div>
+                        </div>
+
+                        ${this.renderDashboard()}
+                        ${this.renderFinder()}
+                        ${this.renderAnalyzer()}
+                        ${this.renderPortfolio()}
+                    </div>
+                `;
+            }
+
+            renderDashboard() {
+                return `
+                    <div id="dashboard" class="reia-section active">
+                        <h2>📊 Investment Dashboard</h2>
+                        
+                        <div class="reia-grid">
+                            <div class="reia-card">
+                                <h3>Portfolio Overview</h3>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Total Properties</span>
+                                    <span class="reia-metric-value" id="total-properties">0</span>
+                                </div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Total Investment</span>
+                                    <span class="reia-metric-value" id="total-investment">$0</span>
+                                </div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Monthly Cash Flow</span>
+                                    <span class="reia-metric-value" id="monthly-cashflow">$0</span>
+                                </div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Average ROI</span>
+                                    <span class="reia-metric-value" id="average-roi">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="reia-card">
+                                <h3>Performance Metrics</h3>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Best Performing Property</span>
+                                    <span class="reia-metric-value" id="best-property">-</span>
+                                </div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Total Equity</span>
+                                    <span class="reia-metric-value" id="total-equity">$0</span>
+                                </div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Debt-to-Equity Ratio</span>
+                                    <span class="reia-metric-value" id="debt-equity-ratio">0%</span>
+                                </div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Properties Analyzed</span>
+                                    <span class="reia-metric-value" id="total-analyses">0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="reia-export-section">
+                            <h3>📄 Export Portfolio Data</h3>
+                            <p>Generate comprehensive reports for your investment portfolio</p>
+                            <div class="reia-export-buttons">
+                                <button class="reia-btn secondary" onclick="reiaApp.exportPortfolioCSV()">
+                                    📊 Export to CSV
+                                </button>
+                                <button class="reia-btn" onclick="reiaApp.generatePortfolioReport()">
+                                    📑 Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderFinder() {
+                return `
+                    <div id="finder" class="reia-section">
+                        <h2>🔍 Property Finder</h2>
+                        
+                        <div class="reia-grid">
+                            <div class="reia-card">
+                                <h3>Search Criteria</h3>
+                                <div class="reia-form-group">
+                                    <label class="reia-label">Location</label>
+                                    <input type="text" class="reia-input" id="search-location" placeholder="Enter city, state, or ZIP code">
+                                </div>
+                                <div class="reia-form-group">
+                                    <label class="reia-label">Price Range</label>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                        <input type="number" class="reia-input" id="min-price" placeholder="Min Price">
+                                        <input type="number" class="reia-input" id="max-price" placeholder="Max Price">
+                                    </div>
+                                </div>
+                                <div class="reia-form-group">
+                                    <label class="reia-label">Property Type</label>
+                                    <select class="reia-input reia-select" id="property-type">
+                                        <option value="">All Types</option>
+                                        <option value="single-family">Single Family Home</option>
+                                        <option value="multi-family">Multi Family</option>
+                                        <option value="condo">Condominium</option>
+                                        <option value="townhouse">Townhouse</option>
+                                        <option value="commercial">Commercial</option>
+                                    </select>
+                                </div>
+                                <div class="reia-form-group">
+                                    <label class="reia-label">Minimum ROI (%)</label>
+                                    <input type="number" class="reia-input" id="min-roi" placeholder="8" value="8">
+                                </div>
+                                <button class="reia-btn" onclick="reiaApp.searchProperties()">
+                                    🔍 Search Properties
+                                </button>
+                            </div>
+                            
+                            <div class="reia-card">
+                                <h3>Search Results</h3>
+                                <div id="property-results">
+                                    <p>Enter search criteria and click "Search Properties" to find investment opportunities.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderAnalyzer() {
+                return `
+                    <div id="analyzer" class="reia-section">
+                        <h2>📈 Deal Analyzer</h2>
+                        
+                        <div class="reia-collapsible active">
+                            <div class="reia-collapsible-header" onclick="reiaApp.toggleCollapsible(this)">
+                                <span>🏠 Property Information</span>
+                                <span class="reia-collapsible-toggle">▼</span>
+                            </div>
+                            <div class="reia-collapsible-content">
+                                <div class="reia-grid">
+                                    <div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Property Address</label>
+                                            <input type="text" class="reia-input" id="property-address" placeholder="123 Main St, City, State">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Purchase Price</label>
+                                            <input type="number" class="reia-input" id="purchase-price" placeholder="300000">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Property Type</label>
+                                            <select class="reia-input reia-select" id="analysis-property-type">
+                                                <option value="single-family">Single Family Home</option>
+                                                <option value="multi-family">Multi Family</option>
+                                                <option value="condo">Condominium</option>
+                                                <option value="townhouse">Townhouse</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Square Footage</label>
+                                            <input type="number" class="reia-input" id="square-footage" placeholder="1500">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Year Built</label>
+                                            <input type="number" class="reia-input" id="year-built" placeholder="1995">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Bedrooms / Bathrooms</label>
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                                <input type="number" class="reia-input" id="bedrooms" placeholder="3">
+                                                <input type="number" class="reia-input" id="bathrooms" placeholder="2">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="reia-collapsible active">
+                            <div class="reia-collapsible-header" onclick="reiaApp.toggleCollapsible(this)">
+                                <span>💰 Financial Details</span>
+                                <span class="reia-collapsible-toggle">▼</span>
+                            </div>
+                            <div class="reia-collapsible-content">
+                                <div class="reia-grid">
+                                    <div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Down Payment (%)</label>
+                                            <input type="number" class="reia-input" id="down-payment" placeholder="20" value="20">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Interest Rate (%)</label>
+                                            <input type="number" class="reia-input" id="interest-rate" placeholder="6.5" value="6.5" step="0.1">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Loan Term (Years)</label>
+                                            <input type="number" class="reia-input" id="loan-term" placeholder="30" value="30">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Closing Costs</label>
+                                            <input type="number" class="reia-input" id="closing-costs" placeholder="5000">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Renovation Costs</label>
+                                            <input type="number" class="reia-input" id="renovation-costs" placeholder="10000">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Other Initial Costs</label>
+                                            <input type="number" class="reia-input" id="other-costs" placeholder="2000">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="reia-collapsible active">
+                            <div class="reia-collapsible-header" onclick="reiaApp.toggleCollapsible(this)">
+                                <span>🏘️ Income & Expenses</span>
+                                <span class="reia-collapsible-toggle">▼</span>
+                            </div>
+                            <div class="reia-collapsible-content">
+                                <div class="reia-grid">
+                                    <div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Monthly Rent</label>
+                                            <input type="number" class="reia-input" id="monthly-rent" placeholder="2500">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Other Monthly Income</label>
+                                            <input type="number" class="reia-input" id="other-income" placeholder="0">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Vacancy Rate (%)</label>
+                                            <input type="number" class="reia-input" id="vacancy-rate" placeholder="5" value="5">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Property Management (%)</label>
+                                            <input type="number" class="reia-input" id="property-management" placeholder="8" value="8">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Monthly Maintenance</label>
+                                            <input type="number" class="reia-input" id="maintenance" placeholder="200">
+                                        </div>
+                                        <div class="reia-form-group">
+                                            <label class="reia-label">Insurance & Taxes</label>
+                                            <input type="number" class="reia-input" id="insurance-taxes" placeholder="400">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin: 30px 0;">
+                            <button class="reia-btn" onclick="reiaApp.analyzeDeal()" style="font-size: 18px; padding: 20px 40px;">
+                                📊 Analyze This Deal
+                            </button>
+                        </div>
+
+                        <div id="analysis-results" class="reia-results" style="display: none;">
+                            <h3>Investment Analysis Results</h3>
+                            <div id="analysis-content"></div>
+                            
+                            <div class="reia-export-section">
+                                <h4>📄 Export Analysis</h4>
+                                <div class="reia-export-buttons">
+                                    <button class="reia-btn secondary" onclick="reiaApp.exportAnalysisCSV()">
+                                        📊 Export to CSV
+                                    </button>
+                                    <button class="reia-btn" onclick="reiaApp.generateLOI()">
+                                        📑 Generate LOI
+                                    </button>
+                                    <button class="reia-btn secondary" onclick="reiaApp.saveToPortfolio()">
+                                        💼 Save to Portfolio
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderPortfolio() {
+                return `
+                    <div id="portfolio" class="reia-section">
+                        <h2>💼 Investment Portfolio</h2>
+                        
+                        <div class="reia-export-section">
+                            <h3>Portfolio Management</h3>
+                            <div class="reia-export-buttons">
+                                <button class="reia-btn" onclick="reiaApp.addProperty()">
+                                    ➕ Add Property
+                                </button>
+                                <button class="reia-btn secondary" onclick="reiaApp.exportPortfolioCSV()">
+                                    📊 Export Portfolio
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="portfolio-list">
+                            <p>No properties in portfolio. Add properties from the Deal Analyzer or use the Add Property button.</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            attachEventListeners() {
+                // Navigation
+                document.querySelectorAll('.reia-nav-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const section = e.target.dataset.section;
+                        this.switchSection(section);
+                    });
+                });
+            }
+
+            switchSection(section) {
+                // Update nav buttons
+                document.querySelectorAll('.reia-nav-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.querySelector(`[data-section="${section}"]`).classList.add('active');
+
+                // Update sections
+                document.querySelectorAll('.reia-section').forEach(sec => {
+                    sec.classList.remove('active');
+                });
+                document.getElementById(section).classList.add('active');
+
+                this.currentSection = section;
+                
+                // Update portfolio display when switching to portfolio section
+                if (section === 'portfolio') {
+                    this.updatePortfolioDisplay();
+                }
+            }
+
+            toggleCollapsible(header) {
+                const collapsible = header.parentElement;
+                collapsible.classList.toggle('active');
+            }
+
+            loadSampleData() {
+                // Sample properties for demo
+                this.properties = [
+                    {
+                        id: 1,
+                        address: "123 Main St, Austin, TX 78701",
+                        price: 350000,
+                        rent: 2800,
+                        type: "single-family",
+                        roi: 8.5,
+                        cashFlow: 650,
+                        capRate: 7.2,
+                        dateAdded: new Date('2024-01-15')
+                    },
+                    {
+                        id: 2,
+                        address: "456 Oak Ave, Dallas, TX 75201",
+                        price: 280000,
+                        rent: 2200,
+                        type: "condo",
+                        roi: 7.2,
+                        cashFlow: 420,
+                        capRate: 6.8,
+                        dateAdded: new Date('2024-02-20')
+                    },
+                    {
+                        id: 3,
+                        address: "789 Pine St, Houston, TX 77001",
+                        price: 420000,
+                        rent: 3200,
+                        type: "multi-family",
+                        roi: 9.1,
+                        cashFlow: 890,
+                        capRate: 8.1,
+                        dateAdded: new Date('2024-03-10')
+                    }
+                ];
+
+                this.updateDashboard();
+            }
+
+            updateDashboard() {
+                const totalProperties = this.properties.length;
+                const totalInvestment = this.properties.reduce((sum, prop) => sum + prop.price, 0);
+                const monthlyCashflow = this.properties.reduce((sum, prop) => sum + (prop.cashFlow || 0), 0);
+                const averageROI = totalProperties > 0 ? 
+                    this.properties.reduce((sum, prop) => sum + prop.roi, 0) / totalProperties : 0;
+
+                // Calculate additional metrics
+                const totalEquity = totalInvestment * 0.25; // Assuming 25% average equity
+                const totalDebt = totalInvestment * 0.75;
+                const debtEquityRatio = totalEquity > 0 ? (totalDebt / totalEquity) * 100 : 0;
+                const bestProperty = this.properties.length > 0 ? 
+                    this.properties.reduce((best, prop) => prop.roi > best.roi ? prop : best).address.split(',')[0] : '-';
+
+                document.getElementById('total-properties').textContent = totalProperties;
+                document.getElementById('total-investment').textContent = `$${totalInvestment.toLocaleString()}`;
+                document.getElementById('monthly-cashflow').textContent = `$${monthlyCashflow.toLocaleString()}`;
+                document.getElementById('average-roi').textContent = `${averageROI.toFixed(1)}%`;
+                document.getElementById('best-property').textContent = bestProperty;
+                document.getElementById('total-equity').textContent = `$${totalEquity.toLocaleString()}`;
+                document.getElementById('debt-equity-ratio').textContent = `${debtEquityRatio.toFixed(1)}%`;
+                document.getElementById('total-analyses').textContent = this.analyses.length;
+            }
+
+            searchProperties() {
+                const location = document.getElementById('search-location').value;
+                const minPrice = parseFloat(document.getElementById('min-price').value) || 0;
+                const maxPrice = parseFloat(document.getElementById('max-price').value) || Infinity;
+                const propertyType = document.getElementById('property-type').value;
+                const minROI = parseFloat(document.getElementById('min-roi').value) || 0;
+
+                // Filter properties based on criteria
+                const results = this.properties.filter(prop => {
+                    if (minPrice && prop.price < minPrice) return false;
+                    if (maxPrice && prop.price > maxPrice) return false;
+                    if (propertyType && prop.type !== propertyType) return false;
+                    if (minROI && prop.roi < minROI) return false;
+                    if (location && !prop.address.toLowerCase().includes(location.toLowerCase())) return false;
+                    return true;
+                });
+
+                const resultsHtml = results.length > 0 ? 
+                    results.map(prop => `
+                        <div class="reia-property-card" onclick="reiaApp.viewPropertyDetails(${prop.id})">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                <div>
+                                    <strong style="font-size: 16px;">${prop.address}</strong>
+                                    <div style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;">
+                                        ${prop.type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </div>
+                                </div>
+                                <div class="reia-status-indicator ${this.getROIStatus(prop.roi)}"></div>
+                            </div>
+                            <div class="reia-metric" style="margin-bottom: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                <span class="reia-metric-label">Purchase Price</span>
+                                <span class="reia-metric-value">$${prop.price.toLocaleString()}</span>
+                            </div>
+                            <div class="reia-metric" style="margin-bottom: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                <span class="reia-metric-label">Monthly Rent</span>
+                                <span class="reia-metric-value">$${prop.rent.toLocaleString()}</span>
+                            </div>
+                            <div class="reia-metric" style="margin-bottom: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                <span class="reia-metric-label">Cash Flow</span>
+                                <span class="reia-metric-value" style="color: ${prop.cashFlow >= 0 ? 'var(--success-color)' : 'var(--danger-color)'}">
+                                    $${prop.cashFlow.toLocaleString()}
+                                </span>
+                            </div>
+                            <div class="reia-metric" style="padding: 8px 0;">
+                                <span class="reia-metric-label">ROI</span>
+                                <span class="reia-metric-value" style="color: ${this.getROIColor(prop.roi)}">${prop.roi.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    `).join('') :
+                    '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No properties found matching your criteria. Try adjusting your search parameters.</p>';
+
+                document.getElementById('property-results').innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h4 style="margin: 0;">Search Results (${results.length} found)</h4>
+                        ${results.length > 0 ? '<button class="reia-btn secondary" onclick="reiaApp.exportSearchResults()">📊 Export Results</button>' : ''}
+                    </div>
+                    ${resultsHtml}
+                `;
+            }
+
+            getROIStatus(roi) {
+                if (roi >= 10) return 'status-excellent';
+                if (roi >= 8) return 'status-good';
+                if (roi >= 6) return 'status-fair';
+                return 'status-poor';
+            }
+
+            getROIColor(roi) {
+                if (roi >= 10) return 'var(--success-color)';
+                if (roi >= 8) return 'var(--warning-color)';
+                if (roi >= 6) return '#f97316';
+                return 'var(--danger-color)';
+            }
+
+            analyzeDeal() {
+                // Get all form values
+                const address = document.getElementById('property-address').value || 'Property Analysis';
+                const purchasePrice = parseFloat(document.getElementById('purchase-price').value) || 0;
+                const downPaymentPercent = parseFloat(document.getElementById('down-payment').value) || 20;
+                const interestRate = parseFloat(document.getElementById('interest-rate').value) || 6.5;
+                const loanTerm = parseFloat(document.getElementById('loan-term').value) || 30;
+                const monthlyRent = parseFloat(document.getElementById('monthly-rent').value) || 0;
+                const otherIncome = parseFloat(document.getElementById('other-income').value) || 0;
+                const vacancyRate = parseFloat(document.getElementById('vacancy-rate').value) || 5;
+                const propertyManagement = parseFloat(document.getElementById('property-management').value) || 8;
+                const maintenance = parseFloat(document.getElementById('maintenance').value) || 0;
+                const insuranceTaxes = parseFloat(document.getElementById('insurance-taxes').value) || 0;
+                const closingCosts = parseFloat(document.getElementById('closing-costs').value) || 0;
+                const renovationCosts = parseFloat(document.getElementById('renovation-costs').value) || 0;
+                const otherCosts = parseFloat(document.getElementById('other-costs').value) || 0;
+
+                if (purchasePrice === 0 || monthlyRent === 0) {
+                    document.getElementById('analysis-results').style.display = 'block';
+                    document.getElementById('analysis-content').innerHTML = `
+                        <div style="color: var(--danger-color); text-align: center; padding: 20px;">
+                            <strong>⚠️ Missing Required Information</strong>
+                            <p>Please enter at least the purchase price and monthly rent to analyze the deal.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Perform calculations
+                const downPayment = purchasePrice * (downPaymentPercent / 100);
+                const loanAmount = purchasePrice - downPayment;
+                const monthlyRate = (interestRate / 100) / 12;
+                const numPayments = loanTerm * 12;
+                
+                const monthlyPayment = loanAmount > 0 ? 
+                    loanAmount * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
+                    (Math.pow(1 + monthlyRate, numPayments) - 1) : 0;
+                
+                const totalInitialInvestment = downPayment + closingCosts + renovationCosts + otherCosts;
+                const effectiveMonthlyRent = (monthlyRent + otherIncome) * (1 - vacancyRate / 100);
+                const propertyManagementFee = effectiveMonthlyRent * (propertyManagement / 100);
+                const totalMonthlyExpenses = monthlyPayment + propertyManagementFee + maintenance + insuranceTaxes;
+                const monthlyCashFlow = effectiveMonthlyRent - totalMonthlyExpenses;
+                const annualCashFlow = monthlyCashFlow * 12;
+                const cashOnCashReturn = totalInitialInvestment > 0 ? (annualCashFlow / totalInitialInvestment) * 100 : 0;
+                const capRate = ((effectiveMonthlyRent * 12 - (propertyManagementFee + maintenance + insuranceTaxes) * 12) / purchasePrice) * 100;
+                
+                // Calculate additional metrics
+                const grossRentMultiplier = purchasePrice / (monthlyRent * 12);
+                const debtServiceCoverageRatio = effectiveMonthlyRent / monthlyPayment;
+                const breakEvenRatio = totalMonthlyExpenses / effectiveMonthlyRent;
+                
+                // Determine deal quality
+                let dealAssessment = '';
+                let dealColor = '';
+                if (monthlyCashFlow >= 0 && cashOnCashReturn >= 12) {
+                    dealAssessment = '🟢 Excellent Deal - Strong cash flow and returns!';
+                    dealColor = 'var(--success-color)';
+                } else if (monthlyCashFlow >= 0 && cashOnCashReturn >= 8) {
+                    dealAssessment = '🟡 Good Deal - Solid investment opportunity';
+                    dealColor = 'var(--warning-color)';
+                } else if (monthlyCashFlow >= 0 && cashOnCashReturn >= 5) {
+                    dealAssessment = '🟠 Fair Deal - Consider market conditions';
+                    dealColor = '#f97316';
+                } else {
+                    dealAssessment = '🔴 Poor Deal - High risk or negative returns';
+                    dealColor = 'var(--danger-color)';
+                }
+
+                // Store current analysis
+                this.currentAnalysis = {
+                    id: Date.now(),
+                    address,
+                    purchasePrice,
+                    monthlyRent,
+                    monthlyCashFlow,
+                    cashOnCashReturn,
+                    capRate,
+                    totalInitialInvestment,
+                    dealAssessment,
+                    analysisDate: new Date(),
+                    details: {
+                        downPayment,
+                        loanAmount,
+                        monthlyPayment,
+                        effectiveMonthlyRent,
+                        totalMonthlyExpenses,
+                        grossRentMultiplier,
+                        debtServiceCoverageRatio,
+                        breakEvenRatio
+                    }
+                };
+
+                // Add to analyses history
+                this.analyses.push(this.currentAnalysis);
+
+                // Display results
+                document.getElementById('analysis-results').style.display = 'block';
+                document.getElementById('analysis-content').innerHTML = `
+                    <div class="reia-grid">
+                        <div class="reia-card">
+                            <h4>💰 Financial Summary</h4>
+                            <div class="reia-metric">
+                                <span class="reia-metric-label">Total Initial Investment</span>
+                                <span class="reia-metric-value">$${totalInitialInvestment.toLocaleString()}</span>
+                            </div>
+                            <div class="reia-metric">
+                                <span class="reia-metric-label">Down Payment</span>
+                                <span class="reia-metric-value">$${downPayment.toLocaleString()}</span>
+                            </div>
+                            <div class="reia-metric">
+                                <span class="reia-metric-label">Loan Amount</span>
+                                <span class="reia-metric-value">$${loanAmount.toLocaleString()}</span>
+                            </div>
+                            <div class="reia-metric">
+                                <span class="reia-metric-label">Monthly Payment (P&I)</span>
+                                <span class="reia-metric-value">$${monthlyPayment.toFixed(0)}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="reia-card">
+                            <h4>📊 Performance Metrics</h4>
+                            <div class="reia-metric">
+                                <span class="reia-metric-label">Monthly Cash Flow</span>
+                                <span class="reia-metric-value" style="color: ${monthlyCashFlow >= 0 ? 'var(--success-color)' : 'var(--danger-color)'}">
+                                    $${monthlyCashFlow.toFixed(0)}
+                                </span>
+                            </div>
+                            <div class="reia-metric">
+                                <span class="reia-metric-label">Cash-on-Cash Return</span>
+                                <span class="reia-metric-value" style="color: ${this.getROIColor(cashOnCashReturn)}">
+                                    ${cashOnCashReturn.toFixed(1)}%
+                                </span>
+                            </div>
+                            <div class="reia-metric">
+                                <span class="reia-metric-label">Cap Rate</span>
+                                <span class="reia-metric-value">${capRate.toFixed(1)}%</span>
+                            </div>
+                            <div class="reia-metric">
+                                <span class="reia-metric-label">Gross Rent Multiplier</span>
+                                <span class="reia-metric-value">${grossRentMultiplier.toFixed(1)}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="reia-card">
+                        <h4>📈 Additional Analysis</h4>
+                        <div class="reia-grid">
+                            <div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Effective Monthly Rent</span>
+                                    <span class="reia-metric-value">$${effectiveMonthlyRent.toFixed(0)}</span>
+                                </div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Total Monthly Expenses</span>
+                                    <span class="reia-metric-value">$${totalMonthlyExpenses.toFixed(0)}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Debt Service Coverage</span>
+                                    <span class="reia-metric-value">${debtServiceCoverageRatio.toFixed(2)}x</span>
+                                </div>
+                                <div class="reia-metric">
+                                    <span class="reia-metric-label">Break-Even Ratio</span>
+                                    <span class="reia-metric-value">${(breakEvenRatio * 100).toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 30px; padding: 25px; background: ${dealColor}15; border: 2px solid ${dealColor}; border-radius: 12px; text-align: center;">
+                        <h4 style="margin: 0 0 10px 0; color: ${dealColor};">Deal Assessment</h4>
+                        <p style="margin: 0; font-size: 18px; font-weight: 600; color: ${dealColor};">${dealAssessment}</p>
+                    </div>
+                `;
+
+                // Update dashboard
+                this.updateDashboard();
+                
+                // Scroll to results
+                document.getElementById('analysis-results').scrollIntoView({ behavior: 'smooth' });
+                
+                this.showNotification('Deal analysis completed successfully!', 'success');
+            }
+
+            exportAnalysisCSV() {
+                if (!this.currentAnalysis) {
+                    this.showNotification('Please analyze a deal first before exporting.', 'error');
+                    return;
+                }
+
+                const data = [{
+                    'Property Address': this.currentAnalysis.address,
+                    'Purchase Price': this.currentAnalysis.purchasePrice,
+                    'Monthly Rent': this.currentAnalysis.monthlyRent,
+                    'Monthly Cash Flow': this.currentAnalysis.monthlyCashFlow.toFixed(2),
+                    'Cash-on-Cash Return (%)': this.currentAnalysis.cashOnCashReturn.toFixed(2),
+                    'Cap Rate (%)': this.currentAnalysis.capRate.toFixed(2),
+                    'Total Initial Investment': this.currentAnalysis.totalInitialInvestment,
+                    'Deal Assessment': this.currentAnalysis.dealAssessment.replace(/🟢|🟡|🟠|🔴/g, '').trim(),
+                    'Analysis Date': this.currentAnalysis.analysisDate.toLocaleDateString()
+                }];
+
+                this.exportToCSV(data, `Deal_Analysis_${this.currentAnalysis.address.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            }
+
+            exportPortfolioCSV() {
+                if (this.properties.length === 0) {
+                    this.showNotification('No properties in portfolio to export.', 'error');
+                    return;
+                }
+
+                const data = this.properties.map(prop => ({
+                    'Property Address': prop.address,
+                    'Property Type': prop.type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    'Purchase Price': prop.price,
+                    'Monthly Rent': prop.rent,
+                    'Monthly Cash Flow': prop.cashFlow,
+                    'ROI (%)': prop.roi.toFixed(2),
+                    'Cap Rate (%)': prop.capRate.toFixed(2),
+                    'Date Added': prop.dateAdded.toLocaleDateString()
+                }));
+
+                this.exportToCSV(data, 'Portfolio_Export');
+            }
+
+            exportToCSV(data, filename) {
+                const ws = XLSX.utils.json_to_sheet(data);
+                const csv = ws.csv;
+                downloadFile(csv, `${filename}.csv`, 'text/csv');
+                this.showNotification('CSV file downloaded successfully!', 'success');
+            }
+
+            generateLOI() {
+                if (!this.currentAnalysis) {
+                    this.showNotification('Please analyze a deal first before generating LOI.', 'error');
+                    return;
+                }
+
+                const loi = `
+LETTER OF INTENT
+
+Date: ${new Date().toLocaleDateString()}
+
+Property Address: ${this.currentAnalysis.address}
+Purchase Price: $${this.currentAnalysis.purchasePrice.toLocaleString()}
+
+Dear Property Owner,
+
+I am writing to express my interest in purchasing the above-referenced property. Based on my analysis, I would like to submit the following offer:
+
+PURCHASE TERMS:
+- Purchase Price: $${this.currentAnalysis.purchasePrice.toLocaleString()}
+- Down Payment: $${this.currentAnalysis.details.downPayment.toLocaleString()}
+- Financing: $${this.currentAnalysis.details.loanAmount.toLocaleString()}
+- Expected Monthly Cash Flow: $${this.currentAnalysis.monthlyCashFlow.toFixed(0)}
+- Projected ROI: ${this.currentAnalysis.cashOnCashReturn.toFixed(1)}%
+
+This letter of intent is non-binding and subject to:
+- Property inspection and due diligence
+- Financing approval
+- Title review and clear title
+- Final purchase agreement execution
+
+I am a serious buyer with financing pre-approval and am prepared to move quickly on this transaction.
+
+Please contact me at your earliest convenience to discuss this opportunity.
+
+Sincerely,
+[Your Name]
+[Your Contact Information]
+
+---
+Generated by Real Estate Investment Analyzer Pro
+Analysis Date: ${this.currentAnalysis.analysisDate.toLocaleDateString()}
+                `.trim();
+
+                downloadFile(loi, `LOI_${this.currentAnalysis.address.replace(/[^a-zA-Z0-9]/g, '_')}.txt`, 'text/plain');
+                this.showNotification('Letter of Intent generated successfully!', 'success');
+            }
+
+            saveToPortfolio() {
+                if (!this.currentAnalysis) {
+                    this.showNotification('Please analyze a deal first before saving to portfolio.', 'error');
+                    return;
+                }
+
+                const property = {
+                    id: Date.now(),
+                    address: this.currentAnalysis.address,
+                    price: this.currentAnalysis.purchasePrice,
+                    rent: this.currentAnalysis.monthlyRent,
+                    type: document.getElementById('analysis-property-type').value,
+                    roi:
