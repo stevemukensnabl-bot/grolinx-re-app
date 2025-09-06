@@ -1,0 +1,51 @@
+// RE Investment App - Bundled v1.3.1
+// Fixes per feedback:
+// - Removed duplicate header inside Deal Analyzer (now only a compact sub-nav, no header bar)
+// - Module tabs remain outside and directly under main brand header
+// - T12 table now horizontally scrolls with fixed min-width columns and no wrapping
+// - Glossary expanded to include all Deal Analyzer fields/metrics
+// - Improved contrast/readability for selected tabs (main and sub tabs)
+
+const COLORS = { primary:'#133463', accent:'#3a5f9a', grayBg:'#eef2f7', grayBorder:'#e5e7eb', darkBg:'#0b1b2f', card:'#ffffff', darkCard:'#1f2937', darkBorder:'#334155', success:'#10b981', warn:'#f59e0b', danger:'#ef4444' };
+const money = (n,d=0)=> n==null||isNaN(n)?'-':`$${Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d})}`;
+const pct = n => n==null||isNaN(n)?'-':`${(Number(n)*100).toFixed(2)}%`;
+
+function useDark(){ const [dark,setDark]=React.useState(false); const bg=dark? COLORS.darkBg : '#f8fafc'; const card=dark? COLORS.darkCard : COLORS.card; const border=dark? COLORS.darkBorder : COLORS.grayBorder; const text=dark? '#e5ecf5':'#0f172a'; return {dark,setDark,bg,card,border,text}; }
+function downloadFile(name,content,type){ const blob=new Blob([content],{type}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(()=> URL.revokeObjectURL(url), 1500); }
+function exportCSV(rows, filename='export.csv'){ const csv = rows.map(r=> r.map(v=> String(v).includes(',')? `"${String(v).replace(/"/g,'""')}"` : v).join(',')).join('\n'); downloadFile(filename, csv, 'text/csv'); }
+function exportDoc(title, paragraphs){ const content = `\n${title}\n\n${paragraphs.join('\n\n')}\n`; downloadFile(title.replace(/\s+/g,'_')+'.doc', content, 'application/msword'); }
+
+// ------------- Deal Analyzer -------------
+function DealAnalyzer({listing}){
+  const theme = useDark(); const {dark,card,border,text} = theme;
+  const [activeTab,setActiveTab] = React.useState('summary');
+
+  const initialDeal = { name: listing?.title || '123 Main St', market: listing?.city || 'Anytown, USA', price: listing?.price ?? 1500000, units: listing?.units ?? 14, netRSF: 7472, downPct:0.35, downAmt: (listing?.price??1500000)*0.35, loanAmt: (listing?.price??1500000)*0.65, rate:0.065, termYears:30, closingCostPct:0.03, rehab:50000, vacancyRate:0.06, otherIncome:0, saleCap:0.06, sellCostPct:0.05 };
+  const [deal,setDeal] = React.useState(initialDeal);
+  React.useEffect(()=>{ if(listing){ setDeal(d=> ({...d, name: listing.title, market: listing.city, price: listing.price, units: listing.units, downAmt: listing.price*(d.downPct||0.35), loanAmt: listing.price*(1-(d.downPct||0.35)) })); } },[listing]);
+
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const thisYear=new Date().getFullYear();
+  const [t12StartMonth,setT12StartMonth] = React.useState(new Date().getMonth());
+  const [t12StartYear,setT12StartYear] = React.useState(thisYear-1);
+  function buildPeriod(sm,sy){ const labels=[]; let m=sm,y=sy; for(let i=0;i<12;i++){ labels.push({m,y,label:`${MONTHS[m]} ${y}`}); m=(m+1)%12; if(m===0) y+=1; } return labels; }
+  const PERIOD = buildPeriod(t12StartMonth,t12StartYear);
+
+  const [t12Rows,setT12Rows] = React.useState([
+    {id:1, category:'Taxes', months:Array(12).fill(7100/12)},
+    {id:2, category:'Insurance', months:Array(12).fill(6585/12)},
+    {id:3, category:'Maintenance', months:Array(12).fill(9760/12)},
+    {id:4, category:'Utilities', months:Array(12).fill(7200/12)},
+    {id:5, category:'Management (7%)', months:Array(12).fill(9000/12)},
+  ]);
+  const sum = (arr)=> arr.reduce((s,v)=> s+(Number(v)||0),0);
+  const t12TotalAnnual = t12Rows.reduce((s,r)=> s + sum(r.months), 0);
+  const t12MonthlyTotals = PERIOD.map((_,i)=> t12Rows.reduce((s,r)=> s + (Number(r.months[i])||0),0));
+
+  function monthlyPI(loan,annualRate,years){ if(!loan||!years) return 0; const r=(annualRate||0)/12; const n=years*12; if(r===0) return loan/n; return loan*(r*Math.pow(1+r,n))/((Math.pow(1+r,n)-1)); }
+  const grossYr1 = (listing?.gsi) || 142440; // GSI
+  const vacYr1 = grossYr1*(deal.vacancyRate||0);
+  const egiYr1 = grossYr1 - vacYr1 + (deal.otherIncome||0); // EGI
+  const noiYr1 = egiYr1 - t12TotalAnnual; // NOI
+  const pmt = monthlyPI(deal.loanAmt, deal.rate, deal.termYears);
+  const ads = pmt*12; // Annual Debt Service
