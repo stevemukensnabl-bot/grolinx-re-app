@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real Estate Investment Analyzer Pro</title>
+  <meta name="description" content="Enterprise-grade real estate investment analyzer with dashboard, finder, analyzer, portfolio, exports, and theme toggle." />
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --bg-accent: #e0f2fe;
+      --text-primary: #1f2937;
+      --text-secondary: #4b5563;
+      --border-color: #e5e7eb;
+      --accent-color: #2563eb;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --shadow: 0 8px 24px rgba(2, 6, 23, 0.08);
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0a192f; /* Dark blue */
+      --bg-secondary: #071321; /* Even darker blue */
+      --bg-accent: #1e293b; /* Slate gray */
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+      --accent-color: #60a5fa; /* Lighter blue */
+      --success-color: #34d399;
+      --warning-color: #fbbf24;
+      --danger-color: #f87171;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .reia-app { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+    .reia-header {
+      border-radius: 16px;
+      padding: 28px;
+      background: linear-gradient(135deg, #1a3a6b, #3a5f9a);
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+    .reia-header h1 { margin: 0 0 6px 0; font-size: 28px; }
+    .reia-header p { margin: 0; opacity: .95; }
+
+    .reia-controls { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 20px 0; }
+    .reia-nav { display: flex; gap: 10px; flex-wrap: wrap; }
+    .reia-nav-btn {
+      padding: 10px 16px; border: 1.5px solid var(--border-color); border-radius: 10px; background: var(--bg-primary);
+      color: var(--text-primary); cursor: pointer; font-weight: 600; font-size: 14px; transition: .2s ease; display: flex; align-items: center; gap: 8px;
+    }
+    .reia-nav-btn:hover { background: var(--bg-accent); border-color: var(--accent-color); }
+    .reia-nav-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); box-shadow: var(--shadow); transform: translateY(-1px); }
+
+    .reia-theme-toggle { padding: 10px 14px; border: 1.5px solid var(--border-color); border-radius: 10px; background: var(--bg-primary); color: var(--text-primary); cursor: pointer; font-weight: 600; }
+    .reia-theme-toggle:hover { background: var(--bg-accent); border-color: var(--accent-color); }
+
+    .reia-section { display: none; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 14px; padding: 24px; box-shadow: var(--shadow); }
+    .reia-section.active { display: block; }
+    .reia-section h2 { margin: 0 0 18px 0; font-size: 22px; }
+
+    .reia-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 18px; }
+    .col-6 { grid-column: span 6; }
+    .col-12 { grid-column: span 12; }
+
+    .reia-card { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; }
+    .reia-card h3 { margin: 0 0 12px 0; font-size: 18px; }
+
+    .reia-form-group { margin-bottom: 12px; }
+    .reia-label { display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .reia-input, .reia-select { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border-color); border-radius: 10px; font-size: 15px; background: var(--bg-primary); color: var(--text-primary); }
+    .reia-input:focus, .reia-select:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(37, 99, 235, .15); }
+
+    .reia-btn { background: var(--success-color); color: #fff; border: none; padding: 12px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: .2s; }
+    .reia-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(16, 185, 129, .25); }
+    .reia-btn.secondary { background: var(--accent-color); }
+    .reia-btn.danger { background: var(--danger-color); }
+
+    .reia-metric { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-color); }
+    .reia-metric:last-child { border-bottom: 0; }
+    .reia-metric-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .4px; }
+    .reia-metric-value { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+
+    .reia-results { margin-top: 16px; padding: 16px; background: var(--bg-accent); border: 1px solid var(--border-color); border-radius: 12px; }
+
+    .reia-collapsible { border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+    .reia-collapsible-header { background: var(--bg-accent); padding: 14px 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+    .reia-collapsible-content { max-height: 0; overflow: hidden; transition: max-height .25s ease; }
+    .reia-collapsible.active .reia-collapsible-content { max-height: 1200px; padding-bottom: 8px; }
+
+    .notification { position: fixed; top: 16px; right: 16px; padding: 12px 14px; border-radius: 10px; color: #fff; font-weight: 800; transform: translateX(400px); transition: transform .2s ease; z-index: 1000; }
+    .notification.show { transform: translateX(0); }
+    .notification.success { background: var(--success-color); }
+    .notification.error { background: var(--danger-color); }
+    .notification.info { background: var(--accent-color); }
+
+    .reia-status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 999px; margin-left: 8px; }
+    .status-excellent { background: var(--success-color); }
+    .status-good { background: var(--warning-color); }
+    .status-fair { background: #f97316; }
+    .status-poor { background: var(--danger-color); }
+
+    /* Module hubs */
+    .module-hub { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; margin-bottom: 16px; }
+    .tile { grid-column: span 4; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-primary); padding: 16px; box-shadow: var(--shadow); display:flex; flex-direction:column; gap:10px; }
+    .tile h4 { margin: 0; font-size: 16px; }
+    .tile p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+    .tile .actions { margin-top: 8px; display:flex; gap:8px; flex-wrap:wrap; }
+
+    .subpanel { display: none; }
+    .subpanel.active { display: block; }
+
+    @media (max-width: 1024px) { .tile { grid-column: span 6; } }
+    @media (max-width: 640px) { .tile { grid-column: span 12; } .col-6 { grid-column: span 12; } }
+  </style>
+</head>
+<body>
+  <div class="reia-app">
+    <div class="reia-header">
+      <h1>🏠 Real Estate Investment Analyzer Pro</h1>
+      <p>Analyze deals, track portfolio, and export professional reports</p>
+    </div>
+
+    <div class="reia-controls">
+      <div class="reia-nav">
+        <button class="reia-nav-btn active" data-section="dashboard">📊 Dashboard</button>
+        <button class="reia-nav-btn" data-section="finder">🔍 Property Finder</button>
+        <button class="reia-nav-btn" data-section="analyzer">📈 Deal Analyzer</button>
+        <button class="reia-nav-btn" data-section="portfolio">💼 Portfolio</button>
+      </div>
+      <button class="reia-theme-toggle" id="themeToggleBtn">🌙 Dark Mode</button>
+    </div>
+
+    <!-- Dashboard -->
+    <section id="dashboard" class="reia-section active">
+      <h2>📊 Investment Dashboard</h2>
+
+      <!-- Module Hub: Dashboard -->
+      <div class="module-hub">
+        <div class="tile">
+          <h4>Portfolio Overview</h4>
+          <p>High-level stats across your saved properties.</p>
+          <div class="actions">
+            <button class="reia-btn secondary" data-open="panel-dashboard-metrics">View Metrics</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h4>Reports & Exports</h4>
+          <p>Download portfolio CSV/XLSX or a quick TXT report.</p>
+          <div class="actions">
+            <button class="reia-btn secondary" data-open="panel-dashboard-exports">Open Exports</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h4>Quick Links</h4>
+          <p>Jump to Analyzer or Portfolio to take action.</p>
+          <div class="actions">
+            <button class="reia-btn" data-jump="analyzer">Go to Analyzer</button>
+            <button class="reia-btn" data-jump="portfolio">Go to Portfolio</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-dashboard-metrics" class="subpanel active">
+        <div class="reia-grid">
+          <div class="reia-card col-6">
+            <h3>Portfolio Overview</h3>
+            <div class="reia-metric"><span class="reia-metric-label">Total Properties</span><span id="total-properties" class="reia-metric-value">0</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">Total Investment</span><span id="total-investment" class="reia-metric-value">$0</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">Monthly Cash Flow</span><span id="monthly-cashflow" class="reia-metric-value">$0</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">Average ROI</span><span id="average-roi" class="reia-metric-value">0%</span></div>
+          </div>
+          <div class="reia-card col-6">
+            <h3>Performance Metrics</h3>
+            <div class="reia-metric"><span class="reia-metric-label">Best Performing Property</span><span id="best-property" class="reia-metric-value">-</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">Total Equity (est.)</span><span id="total-equity" class="reia-metric-value">$0</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">Debt-to-Equity Ratio</span><span id="debt-equity-ratio" class="reia-metric-value">0%</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">Properties Analyzed</span><span id="total-analyses" class="reia-metric-value">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-dashboard-exports" class="subpanel">
+        <div class="reia-card" style="margin-top:16px">
+          <h3>📄 Export Portfolio Data</h3>
+          <p>Generate quick exports for reporting and sharing.</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="reia-btn secondary" id="exportPortfolioCSVBtn">📊 Export to CSV</button>
+            <button class="reia-btn secondary" id="exportPortfolioXLSXBtn">📊 Export to XLSX</button>
+            <button class="reia-btn" id="portfolioReportBtn">📑 Generate Report</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Finder -->
+    <section id="finder" class="reia-section">
+      <h2>🔍 Property Finder</h2>
+
+      <!-- Module Hub: Finder -->
+      <div class="module-hub">
+        <div class="tile">
+          <h4>Quick Search</h4>
+          <p>Filter by location, price, type, and ROI threshold.</p>
+          <div class="actions">
+            <button class="reia-btn secondary" data-open="panel-finder-search">Open Search</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h4>Bulk Import (CSV)</h4>
+          <p>Import your own list of properties (coming soon).</p>
+          <div class="actions">
+            <button class="reia-btn" disabled>Coming Soon</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h4>Saved Filters</h4>
+          <p>Reuse common searches with one click (coming soon).</p>
+          <div class="actions">
+            <button class="reia-btn" disabled>Coming Soon</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-finder-search" class="subpanel active">
+        <div class="reia-grid">
+          <div class="reia-card col-6">
+            <h3>Search Criteria</h3>
+            <div class="reia-form-group"><label class="reia-label">Location</label><input type="text" id="search-location" class="reia-input" placeholder="Enter city, state, or ZIP" /></div>
+            <div class="reia-form-group"><label class="reia-label">Price Range</label><div class="reia-grid"><div class="col-6"><input type="number" id="min-price" class="reia-input" placeholder="Min" /></div><div class="col-6"><input type="number" id="max-price" class="reia-input" placeholder="Max" /></div></div></div>
+            <div class="reia-form-group"><label class="reia-label">Property Type</label><select id="property-type" class="reia-select"><option value="">All Types</option><option value="single-family">Single Family</option><option value="multi-family">Multi Family</option><option value="condo">Condo</option><option value="townhouse">Townhouse</option><option value="commercial">Commercial</option></select></div>
+            <div class="reia-form-group"><label class="reia-label">Minimum ROI (%)</label><input type="number" id="min-roi" class="reia-input" value="8" /></div>
+            <button class="reia-btn" id="searchBtn">🔍 Search Properties</button>
+          </div>
+          <div class="reia-card col-6">
+            <h3>Search Results</h3>
+            <div id="property-results"><p>Enter criteria and click Search to find matches.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Analyzer -->
+    <section id="analyzer" class="reia-section">
+      <h2>📈 Deal Analyzer</h2>
+
+      <!-- Module Hub: Analyzer -->
+      <div class="module-hub">
+        <div class="tile">
+          <h4>Quick Analyze</h4>
+          <p>Enter key inputs and generate a full analysis.</p>
+          <div class="actions">
+            <button class="reia-btn secondary" data-open="panel-analyzer-inputs">Open Analyzer</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h4>Scenario Compare</h4>
+          <p>Side-by-side comparison of two financing setups.</p>
+          <div class="actions">
+            <button class="reia-btn secondary" data-open="panel-analyzer-scenarios">Open Comparison</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h4>Pro Forma</h4>
+          <p>5-year projections with IRR and NPV.</p>
+          <div class="actions">
+            <button class="reia-btn secondary" data-open="panel-analyzer-results">View Latest Results</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-analyzer-inputs" class="subpanel active">
+        <div class="reia-collapsible active">
+          <div class="reia-collapsible-header"><span>🏠 Property Information</span><span>▼</span></div>
+          <div class="reia-collapsible-content">
+            <div class="reia-grid">
+              <div class="col-6">
+                <div class="reia-form-group"><label class="reia-label">Property Address</label><input id="property-address" class="reia-input" placeholder="123 Main St, City, ST" /></div>
+                <div class="reia-form-group"><label class="reia-label">Purchase Price</label><input id="purchase-price" type="number" class="reia-input" placeholder="300000" /></div>
+                <div class="reia-form-group"><label class="reia-label">Property Type</label><select id="analysis-property-type" class="reia-select"><option value="single-family">Single Family</option><option value="multi-family">Multi Family</option><option value="condo">Condo</option><option value="townhouse">Townhouse</option></select></div>
+              </div>
+              <div class="col-6">
+                <div class="reia-form-group"><label class="reia-label">Square Footage</label><input id="square-footage" type="number" class="reia-input" placeholder="1500" /></div>
+                <div class="reia-form-group"><label class="reia-label">Year Built</label><input id="year-built" type="number" class="reia-input" placeholder="1995" /></div>
+                <div class="reia-form-group"><label class="reia-label">Bedrooms / Bathrooms</label><div class="reia-grid"><div class="col-6"><input id="bedrooms" type="number" class="reia-input" placeholder="3" /></div><div class="col-6"><input id="bathrooms" type="number" class="reia-input" placeholder="2" /></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="reia-collapsible active">
+          <div class="reia-collapsible-header"><span>💰 Financial Details</span><span>▼</span></div>
+          <div class="reia-collapsible-content">
+            <div class="reia-grid">
+              <div class="col-6">
+                <div class="reia-form-group"><label class="reia-label">Down Payment (%)</label><input id="down-payment" type="number" class="reia-input" value="20" /></div>
+                <div class="reia-form-group"><label class="reia-label">Interest Rate (%)</label><input id="interest-rate" type="number" step="0.1" class="reia-input" value="6.5" /></div>
+                <div class="reia-form-group"><label class="reia-label">Loan Term (Years)</label><input id="loan-term" type="number" class="reia-input" value="30" /></div>
+              </div>
+              <div class="col-6">
+                <div class="reia-form-group"><label class="reia-label">Closing Costs</label><input id="closing-costs" type="number" class="reia-input" value="5000" /></div>
+                <div class="reia-form-group"><label class="reia-label">Renovation Costs</label><input id="renovation-costs" type="number" class="reia-input" value="10000" /></div>
+                <div class="reia-form-group"><label class="reia-label">Other Initial Costs</label><input id="other-costs" type="number" class="reia-input" value="2000" /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="reia-collapsible active">
+          <div class="reia-collapsible-header"><span>🏘️ Income & Expenses</span><span>▼</span></div>
+          <div class="reia-collapsible-content">
+            <div class="reia-grid">
+              <div class="col-6">
+                <div class="reia-form-group"><label class="reia-label">Monthly Rent</label><input id="monthly-rent" type="number" class="reia-input" placeholder="2500" /></div>
+                <div class="reia-form-group"><label class="reia-label">Other Monthly Income</label><input id="other-income" type="number" class="reia-input" value="0" /></div>
+                <div class="reia-form-group"><label class="reia-label">Vacancy Rate (%)</label><input id="vacancy-rate" type="number" class="reia-input" value="5" /></div>
+              </div>
+              <div class="col-6">
+                <div class="reia-form-group"><label class="reia-label">Property Management (%)</label><input id="property-management" type="number" class="reia-input" value="8" /></div>
+                <div class="reia-form-group"><label class="reia-label">Monthly Maintenance</label><input id="maintenance" type="number" class="reia-input" value="200" /></div>
+                <div class="reia-form-group"><label class="reia-label">Insurance & Taxes</label><input id="insurance-taxes" type="number" class="reia-input" value="400" /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align:center; margin: 14px 0 4px;">
+          <button class="reia-btn" id="analyzeBtn" style="font-size: 16px; padding: 14px 22px;">📊 Analyze This Deal</button>
+        </div>
+
+        <div id="analysis-results" class="reia-results" style="display:none">
+          <h3>Investment Analysis Results</h3>
+          <div id="analysis-content"></div>
+          <div class="reia-card" style="margin-top:12px">
+            <h3>📄 Export Analysis</h3>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="reia-btn secondary" id="exportAnalysisCSVBtn">📊 Export to CSV</button>
+              <button class="reia-btn secondary" id="exportAnalysisXLSXBtn">📊 Export to XLSX</button>
+              <button class="reia-btn" id="generateLoiBtn">📑 Generate LOI</button>
+              <button class="reia-btn secondary" id="saveToPortfolioBtn">💼 Save to Portfolio</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-analyzer-scenarios" class="subpanel">
+        <div class="reia-card" style="margin-top:16px">
+          <h3>🔄 Scenario Comparison</h3>
+          <p>Compare different financing scenarios side-by-side.</p>
+          <div class="reia-grid">
+            <div class="col-6">
+              <div class="reia-form-group"><label class="reia-label">Scenario 1 Down Payment (%)</label><input type="number" id="scenario1-dp" class="reia-input" value="20" /></div>
+              <div class="reia-form-group"><label class="reia-label">Scenario 1 Interest Rate (%)</label><input type="number" step="0.1" id="scenario1-rate" class="reia-input" value="6.5" /></div>
+              <div class="reia-form-group"><label class="reia-label">Scenario 1 Loan Term (Years)</label><input type="number" id="scenario1-term" class="reia-input" value="30" /></div>
+            </div>
+            <div class="col-6">
+              <div class="reia-form-group"><label class="reia-label">Scenario 2 Down Payment (%)</label><input type="number" id="scenario2-dp" class="reia-input" value="25" /></div>
+              <div class="reia-form-group"><label class="reia-label">Scenario 2 Interest Rate (%)</label><input type="number" step="0.1" id="scenario2-rate" class="reia-input" value="7.0" /></div>
+              <div class="reia-form-group"><label class="reia-label">Scenario 2 Loan Term (Years)</label><input type="number" id="scenario2-term" class="reia-input" value="20" /></div>
+            </div>
+          </div>
+          <button class="reia-btn secondary" id="compareScenariosBtn">⚖️ Compare Scenarios</button>
+          <div id="scenario-compare-results" style="margin-top:15px; display:none;"></div>
+        </div>
+      </div>
+
+      <div id="panel-analyzer-results" class="subpanel">
+        <div class="reia-card">
+          <h3>Latest Pro Forma & Results</h3>
+          <p>Run an analysis in Quick Analyze, then return here to review the 5-year table and export options.</p>
+          <div id="latest-results-proxy">No analysis yet.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Portfolio -->
+    <section id="portfolio" class="reia-section">
+      <h2>💼 Investment Portfolio</h2>
+
+      <!-- Module Hub: Portfolio -->
+      <div class="module-hub">
+        <div class="tile">
+          <h4>Portfolio Manager</h4>
+          <p>Add, remove, and re-analyze saved properties.</p>
+          <div class="actions">
+            <button class="reia-btn secondary" data-open="panel-portfolio-list">Open Manager</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h4>Exports</h4>
+          <p>Download your entire portfolio as CSV or XLSX.</p>
+          <div class="actions">
+            <button class="reia-btn secondary" data-open="panel-portfolio-exports">Open Exports</button>
+          </div>
+        </div>
+        <div class="tile">
+          <h4>Quick Actions</h4>
+          <p>Add a property manually or clear portfolio.</p>
+          <div class="actions">
+            <button class="reia-btn" id="addPropertyBtn">➕ Add Property</button>
+            <button class="reia-btn danger" id="clearPortfolioBtn">🗑️ Clear Portfolio</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-portfolio-list" class="subpanel active">
+        <div id="portfolio-list" style="margin-top:12px"><p>No properties in portfolio yet. Save from the Analyzer or use Add Property.</p></div>
+      </div>
+
+      <div id="panel-portfolio-exports" class="subpanel">
+        <div class="reia-card">
+          <h3>Portfolio Exports</h3>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="reia-btn secondary" id="exportPortfolioCSVBtn2">📊 Export Portfolio CSV</button>
+            <button class="reia-btn secondary" id="exportPortfolioXLSXBtn2">📊 Export Portfolio XLSX</button>
+            <button class="reia-btn" id="portfolioReportBtn2">📑 Generate Report</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- SheetJS (XLSX) and FileSaver.js for file downloads -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+  <script>
+    // Simple CSV utility (no external libs)
+    function objectsToCSV(rows) {
+      if (!rows || !rows.length) return '';
+      const headers = Object.keys(rows[0]);
+      const escapeVal = (val) => {
+        if (val == null) return '';
+        const s = String(val);
+        if (s.includes(',') || s.includes('"') || s.includes('
+')) {
+          return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+      };
+      const lines = [headers.join(',')];
+      for (const row of rows) lines.push(headers.map(h => escapeVal(row[h])).join(','));
+      return lines.join('
+');
+    }
+
+    function downloadFile(content, filename, type = 'text/plain') {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    function exportToXLSX(data, filename) {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      saveAs(new Blob([wbout], { type: "application/octet-stream" }), filename);
+    }
+
+    class EnhancedREIAApp {
+      constructor() {
+        this.currentSection = 'dashboard';
+        this.theme = localStorage.getItem('reia-theme') || 'light';
+        this.properties = [];
+        this.analyses = [];
+        this.currentAnalysis = null;
+        this.loadState();
+        this.applyTheme();
+        this.seedSampleProperties();
+        this.attachGlobalHandlers();
+        this.updateDashboard();
+        this.updatePortfolioDisplay();
+      }
+
+      applyTheme() { document.documentElement.setAttribute('data-theme', this.theme); this.syncThemeButton(); }
+      toggleTheme() { this.theme = this.theme === 'light' ? 'dark' : 'light'; localStorage.setItem('reia-theme', this.theme); this.applyTheme(); this.notify('Theme updated', 'success'); }
+      syncThemeButton() { const btn = document.getElementById('themeToggleBtn'); if (btn) btn.textContent = this.theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode'; }
+
+      notify(message, type = 'info') { const el = document.createElement('div'); el.className = `notification ${type}`; el.textContent = message; document.body.appendChild(el); requestAnimationFrame(() => el.classList.add('show')); setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 250); }, 2500); }
+
+      switchSection(id) {
+        document.querySelectorAll('.reia-nav-btn').forEach(b => b.classList.remove('active'));
+        const navBtn = document.querySelector(`.reia-nav-btn[data-section="${id}"]`);
+        if (navBtn) navBtn.classList.add('active');
+        document.querySelectorAll('.reia-section').forEach(s => s.classList.remove('active'));
+        const section = document.getElementById(id);
+        if (section) section.classList.add('active');
+        this.currentSection = id;
+        if (id === 'portfolio') this.updatePortfolioDisplay();
+        // Reset subpanels to first/active within the section
+        this.resetSubpanels(section);
+      }
+
+      resetSubpanels(sectionEl) {
+        if (!sectionEl) return;
+        // Hide all subpanels in this section except those marked .active by default
+        const subpanels = sectionEl.querySelectorAll('.subpanel');
+        subpanels.forEach(sp => sp.classList.remove('active'));
+        const defaultPanel = sectionEl.querySelector('.subpanel.active') || sectionEl.querySelector('.subpanel');
+        if (defaultPanel) defaultPanel.classList.add('active');
+      }
+
+      openPanel(panelId) {
+        const currentSectionEl = document.getElementById(this.currentSection);
+        if (!currentSectionEl) return;
+        currentSectionEl.querySelectorAll('.subpanel').forEach(sp => sp.classList.remove('active'));
+        const target = currentSectionEl.querySelector(`#${panelId}`);
+        if (target) target.classList.add('active');
+      }
+
+      toggleCollapsible(container) { container.classList.toggle('active'); }
+
+      seedSampleProperties() {
+        if (this.properties && this.properties.length) return;
+        this.sample = [
+          { id: 1, address: '123 Main St, Austin, TX 78701', price: 350000, rent: 2800, type: 'single-family', roi: 8.5, cashFlow: 650, capRate: 7.2, dateAdded: new Date('2024-01-15') },
+          { id: 2, address: '456 Oak Ave, Dallas, TX 75201', price: 280000, rent: 2200, type: 'condo', roi: 7.2, cashFlow: 420, capRate: 6.8, dateAdded: new Date('2024-02-20') },
+          { id: 3, address: '789 Pine St, Houston, TX 77001', price: 420000, rent: 3200, type: 'multi-family', roi: 9.1, cashFlow: 890, capRate: 8.1, dateAdded: new Date('2024-03-10') }
+        ];
+      }
+
+      updateDashboard() {
+        const props = this.properties;
+        const total = props.length;
+        const totalInvestment = props.reduce((s, p) => s + (p.price || 0), 0);
+        const monthlyCF = props.reduce((s, p) => s + (p.cashFlow || 0), 0);
+        const avgROI = total ? props.reduce((s, p) => s + (p.roi || 0), 0) / total : 0;
+        const equity = totalInvestment * 0.25;
+        const debt = totalInvestment * 0.75;
+        const der = equity ? (debt / equity) * 100 : 0;
+        const best = props.length ? props.reduce((b, p) => (p.roi || 0) > (b.roi || 0) ? p : b).address.split(',')[0] : '-';
+        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setText('total-properties', total);
+        setText('total-investment', `$${totalInvestment.toLocaleString()}`);
+        setText('monthly-cashflow', `$${monthlyCF.toLocaleString()}`);
+        setText('average-roi', `${avgROI.toFixed(1)}%`);
+        setText('best-property', best);
+        setText('total-equity', `$${equity.toLocaleString()}`);
+        setText('debt-equity-ratio', `${der.toFixed(1)}%`);
+        setText('total-analyses', this.analyses.length);
+      }
+
+      roiStatus(roi) { if (roi >= 10) return 'status-excellent'; if (roi >= 8) return 'status-good'; if (roi >= 6) return 'status-fair'; return 'status-poor'; }
+      roiColor(roi) { if (roi >= 10) return 'var(--success-color)'; if (roi >= 8) return 'var(--warning-color)'; if (roi >= 6) return '#f97316'; return 'var(--danger-color)'; }
+
+      searchProperties() {
+        const location = document.getElementById('search-location').value.trim();
+        const minP = parseFloat(document.getElementById('min-price').value) || 0;
+        const maxP = parseFloat(document.getElementById('max-price').value) || Infinity;
+        const type = document.getElementById('property-type').value;
+        const minRoi = parseFloat(document.getElementById('min-roi').value) || 0;
+        const list = (this.sample || []).filter(p => {
+          if (p.price < minP) return false;
+          if (p.price > maxP) return false;
+          if (type && p.type !== type) return false;
+          if (minRoi && (p.roi || 0) < minRoi) return false;
+          if (location && !p.address.toLowerCase().includes(location.toLowerCase())) return false;
+          return true;
+        });
+        const container = document.getElementById('property-results');
+        if (!container) return;
+        if (!list.length) {
+          container.innerHTML = '<p style="color:var(--text-secondary)">No properties found for your criteria.</p>';
+          return;
+        }
+        const cards = list.map(p => (
+          `<div class="reia-card" style="margin-bottom:10px; cursor:pointer" data-id="${p.id}">` +
+          `<div style="display:flex; justify-content:space-between; align-items:center">` +
+          `<div><strong>${p.address}</strong><div style="color:var(--text-secondary)">${p.type.replace('-', ' ')}</div></div>` +
+          `<div class="reia-status-indicator ${this.roiStatus(p.roi)}"></div>` +
+          `</div>` +
+          `<div class="reia-metric"><span class="reia-metric-label">Purchase Price</span><span class="reia-metric-value">$${p.price.toLocaleString()}</span></div>` +
+          `<div class="reia-metric"><span class="reia-metric-label">Monthly Rent</span><span class="reia-metric-value">$${p.rent.toLocaleString()}</span></div>` +
+          `<div class="reia-metric"><span class="reia-metric-label">Cash Flow</span><span class="reia-metric-value" style="color:${(p.cashFlow||0)>=0?'var(--success-color)':'var(--danger-color)'}">$${(p.cashFlow||0).toLocaleString()}</span></div>` +
+          `<div class="reia-metric"><span class="reia-metric-label">ROI</span><span class="reia-metric-value" style="color:${this.roiColor(p.roi)}">${(p.roi||0).toFixed(1)}%</span></div>` +
+          `</div>`
+        )).join('');
+        container.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px"><h4 style="margin:0">Results (${list.length})</h4><div><button class="reia-btn secondary" id="exportResultsCSVBtn">📊 Export CSV</button><button class="reia-btn secondary" id="exportResultsXLSXBtn" style="margin-left: 10px;">📊 Export XLSX</button></div></div>${cards}`;
+        container.querySelectorAll('.reia-card').forEach(card => card.addEventListener('click', () => this.viewPropertyDetails(parseInt(card.getAttribute('data-id'), 10))));
+        const exportCSVBtn = document.getElementById('exportResultsCSVBtn'); if (exportCSVBtn) exportCSVBtn.onclick = () => this.exportSearchResults(list, 'csv');
+        const exportXLSXBtn = document.getElementById('exportResultsXLSXBtn'); if (exportXLSXBtn) exportXLSXBtn.onclick = () => this.exportSearchResults(list, 'xlsx');
+      }
+
+      viewPropertyDetails(id) {
+        const p = (this.sample || []).find(x => x.id === id);
+        if (!p) return;
+        document.getElementById('property-address').value = p.address;
+        document.getElementById('purchase-price').value = p.price;
+        document.getElementById('monthly-rent').value = p.rent;
+        this.switchSection('analyzer');
+        this.openPanel('panel-analyzer-inputs');
+        this.notify('Loaded property into analyzer', 'info');
+      }
+
+      exportSearchResults(list, format) {
+        const rows = list.map(p => ({
+          'Property Address': p.address,
+          'Property Type': p.type,
+          'Purchase Price': p.price,
+          'Monthly Rent': p.rent,
+          'Monthly Cash Flow': p.cashFlow,
+          'ROI (%)': p.roi,
+          'Cap Rate (%)': p.capRate,
+          'Date Added': (p.dateAdded instanceof Date ? p.dateAdded : new Date(p.dateAdded)).toLocaleDateString(),
+        }));
+        if (format === 'csv') { downloadFile(objectsToCSV(rows), 'Search_Results.csv', 'text/csv'); }
+        else if (format === 'xlsx') { exportToXLSX(rows, 'Search_Results.xlsx'); }
+        this.notify(`Exported search results to ${format.toUpperCase()}`, 'success');
+      }
+
+      calculateAnalysis(purchasePrice, downPct, rate, termYears, monthlyRent, otherIncome, vacancyRate, mgmtPct, maintenance, insTaxes, closing, reno, other) {
+        const rateMonthly = (rate / 100) / 12;
+        const termMonths = termYears * 12;
+
+        const downPayment = purchasePrice * (downPct / 100);
+        const loanAmount = Math.max(purchasePrice - downPayment, 0);
+        const monthlyPayment = loanAmount ? (loanAmount * (rateMonthly * Math.pow(1 + rateMonthly, termMonths))) / (Math.pow(1 + rateMonthly, termMonths) - 1) : 0;
+        const totalInitial = downPayment + closing + reno + other;
+
+        const grossMonthlyIncome = monthlyRent + otherIncome;
+        const effectiveRent = grossMonthlyIncome * (1 - vacancyRate);
+        const managementFee = effectiveRent * mgmtPct;
+        const opExMonthly = managementFee + maintenance + insTaxes;
+        const totalMonthlyExpenses = opExMonthly + monthlyPayment;
+
+        const monthlyCashFlow = effectiveRent - totalMonthlyExpenses;
+        const annualCashFlow = monthlyCashFlow * 12;
+        const coc = totalInitial ? (annualCashFlow / totalInitial) * 100 : 0;
+        const noiAnnual = (effectiveRent - opExMonthly) * 12;
+        const capRate = purchasePrice ? (noiAnnual / purchasePrice) * 100 : 0;
+        const grm = (monthlyRent ? purchasePrice / (monthlyRent * 12) : 0);
+        const dscr = monthlyPayment ? effectiveRent / monthlyPayment : 0;
+        const breakEven = effectiveRent ? (totalMonthlyExpenses / effectiveRent) : 0;
+
+        // Pro Forma (5 years)
+        const proFormaYears = 5;
+        const annualCashFlows = [];
+        const annualEquity = [];
+        let currentLoanBalance = loanAmount;
+        const annualAppreciationRate = 0.03; // 3%
+        const annualRentGrowth = 0.02; // 2%
+        const annualExpenseGrowth = 0.02; // 2%
+
+        let currentMonthlyRent = monthlyRent;
+        let currentOtherIncome = otherIncome;
+        let currentMaintenance = maintenance;
+        let currentInsTaxes = insTaxes;
+
+        for (let year = 1; year <= proFormaYears; year++) {
+          currentMonthlyRent *= (1 + annualRentGrowth);
+          currentOtherIncome *= (1 + annualRentGrowth);
+          currentMaintenance *= (1 + annualExpenseGrowth);
+          currentInsTaxes *= (1 + annualExpenseGrowth);
+
+          const yearGrossMonthlyIncome = currentMonthlyRent + currentOtherIncome;
+          const yearEffectiveRent = yearGrossMonthlyIncome * (1 - vacancyRate);
+          const yearManagementFee = yearEffectiveRent * mgmtPct;
+          const yearOpExMonthly = yearManagementFee + currentMaintenance + currentInsTaxes;
+          const yearTotalMonthlyExpenses = yearOpExMonthly + monthlyPayment; // PI fixed
+          const yearMonthlyCashFlow = yearEffectiveRent - yearTotalMonthlyExpenses;
+          annualCashFlows.push(yearMonthlyCashFlow * 12);
+
+          // Approx principal paid in the year (amortization loop)
+          let principalPaidThisYear = 0;
+          for (let month = 0; month < 12; month++) {
+            if (currentLoanBalance <= 0) break;
+            const interestThisMonth = currentLoanBalance * rateMonthly;
+            const principalThisMonth = monthlyPayment - interestThisMonth;
+            principalPaidThisYear += principalThisMonth;
+            currentLoanBalance -= principalThisMonth;
+          }
+
+          const currentPropertyValue = purchasePrice * Math.pow(1 + annualAppreciationRate, year);
+          const currentEquity = currentPropertyValue - Math.max(currentLoanBalance, 0);
+          annualEquity.push(currentEquity);
+        }
+
+        // IRR & NPV
+        const irr = (cashFlows, initialInvestment, guess = 0.1) => {
+          const npv = (rate) => {
+            let sum = initialInvestment;
+            for (let i = 0; i < cashFlows.length; i++) {
+              sum += cashFlows[i] / Math.pow(1 + rate, i + 1);
+            }
+            return sum;
+          };
+          let x0 = guess, x1 = guess + 0.01;
+          for (let i = 0; i < 100; i++) {
+            const y0 = npv(x0), y1 = npv(x1);
+            if (Math.abs(y0) < 1e-7) return x0;
+            const denom = (y1 - y0);
+            if (Math.abs(denom) < 1e-9) break;
+            const x2 = x0 - y0 * ((x1 - x0) / denom);
+            x1 = x0; x0 = x2;
+          }
+          return x0;
+        };
+        const initialInvestmentForIRR = -totalInitial;
+        const irrValue = irr(annualCashFlows, initialInvestmentForIRR) * 100;
+
+        const discountRate = 0.08;
+        let npvValue = initialInvestmentForIRR;
+        for (let i = 0; i < annualCashFlows.length; i++) {
+          npvValue += annualCashFlows[i] / Math.pow(1 + discountRate, i + 1);
+        }
+
+        let assessment, color;
+        if (monthlyCashFlow >= 0 && coc >= 12) { assessment = '🟢 Excellent Deal - Strong cash flow and returns'; color = 'var(--success-color)'; }
+        else if (monthlyCashFlow >= 0 && coc >= 8) { assessment = '🟡 Good Deal - Solid investment opportunity'; color = 'var(--warning-color)'; }
+        else if (monthlyCashFlow >= 0 && coc >= 5) { assessment = '🟠 Fair Deal - Consider market conditions'; color = '#f97316'; }
+        else { assessment = '🔴 Poor Deal - Negative or risky returns'; color = 'var(--danger-color)'; }
+
+        return { purchasePrice, downPayment, loanAmount, monthlyPayment, totalInitial, grossMonthlyIncome, effectiveRent, managementFee, opExMonthly, totalMonthlyExpenses, monthlyCashFlow, annualCashFlow, coc, noiAnnual, capRate, grm, dscr, breakEven, assessment, color, annualCashFlows, annualEquity, irrValue, npvValue };
+      }
+
+      analyzeDeal() {
+        const address = (document.getElementById('property-address').value || 'Property').trim();
+        const purchasePrice = parseFloat(document.getElementById('purchase-price').value) || 0;
+        const downPct = parseFloat(document.getElementById('down-payment').value) || 20;
+        const rate = parseFloat(document.getElementById('interest-rate').value) || 6.5;
+        const termYears = parseFloat(document.getElementById('loan-term').value) || 30;
+        const monthlyRent = parseFloat(document.getElementById('monthly-rent').value) || 0;
+        const otherIncome = parseFloat(document.getElementById('other-income').value) || 0;
+        const vacancyRate = (parseFloat(document.getElementById('vacancy-rate').value) || 5) / 100;
+        const mgmtPct = (parseFloat(document.getElementById('property-management').value) || 8) / 100;
+        const maintenance = parseFloat(document.getElementById('maintenance').value) || 0;
+        const insTaxes = parseFloat(document.getElementById('insurance-taxes').value) || 0;
+        const closing = parseFloat(document.getElementById('closing-costs').value) || 0;
+        const reno = parseFloat(document.getElementById('renovation-costs').value) || 0;
+        const other = parseFloat(document.getElementById('other-costs').value) || 0;
+
+        if (!purchasePrice || !monthlyRent) { this.showAnalysisMessage('⚠️ Enter at least purchase price and monthly rent.'); return; }
+
+        const result = this.calculateAnalysis(purchasePrice, downPct, rate, termYears, monthlyRent, otherIncome, vacancyRate, mgmtPct, maintenance, insTaxes, closing, reno, other);
+
+        this.currentAnalysis = {
+          id: Date.now(),
+          address,
+          purchasePrice,
+          monthlyRent,
+          monthlyCashFlow: result.monthlyCashFlow,
+          cashOnCashReturn: result.coc,
+          capRate: result.capRate,
+          totalInitialInvestment: result.totalInitial,
+          dealAssessment: result.assessment,
+          analysisDate: new Date(),
+          details: {
+            downPayment: result.downPayment,
+            loanAmount: result.loanAmount,
+            monthlyPayment: result.monthlyPayment,
+            effectiveMonthlyRent: result.effectiveRent,
+            totalMonthlyExpenses: result.totalMonthlyExpenses,
+            grossRentMultiplier: result.grm,
+            debtServiceCoverageRatio: result.dscr,
+            breakEvenRatio: result.breakEven,
+            annualCashFlows: result.annualCashFlows,
+            annualEquity: result.annualEquity,
+            irr: result.irrValue,
+            npv: result.npvValue
+          },
+          type: document.getElementById('analysis-property-type').value
+        };
+        this.analyses.push(this.currentAnalysis);
+
+        let proFormaHtml = '<h3>📈 5-Year Pro Forma</h3>'+
+          '<table class="scenario-compare-table"><thead><tr><th>Year</th><th>Annual Cash Flow</th><th>Projected Equity</th></tr></thead><tbody>';
+        for (let i = 0; i < result.annualCashFlows.length; i++) {
+          proFormaHtml += `<tr><td>${i + 1}</td><td>$${result.annualCashFlows[i].toFixed(0).toLocaleString()}</td><td>$${result.annualEquity[i].toFixed(0).toLocaleString()}</td></tr>`;
+        }
+        proFormaHtml += '</tbody></table>';
+
+        const html = `
+          <div class="reia-grid">
+            <div class="reia-card col-6">
+              <h3>💰 Financial Summary</h3>
+              <div class="reia-metric"><span class="reia-metric-label">Total Initial Investment</span><span class="reia-metric-value">$${result.totalInitial.toLocaleString()}</span></div>
+              <div class="reia-metric"><span class="reia-metric-label">Down Payment</span><span class="reia-metric-value">$${result.downPayment.toLocaleString()}</span></div>
+              <div class="reia-metric"><span class="reia-metric-label">Loan Amount</span><span class="reia-metric-value">$${result.loanAmount.toLocaleString()}</span></div>
+              <div class="reia-metric"><span class="reia-metric-label">Monthly Payment (P&I)</span><span class="reia-metric-value">$${result.monthlyPayment.toFixed(0)}</span></div>
+            </div>
+            <div class="reia-card col-6">
+              <h3>📊 Performance Metrics</h3>
+              <div class="reia-metric"><span class="reia-metric-label">Monthly Cash Flow</span><span class="reia-metric-value" style="color:${result.monthlyCashFlow>=0?'var(--success-color)':'var(--danger-color)'}">$${result.monthlyCashFlow.toFixed(0)}</span></div>
+              <div class="reia-metric"><span class="reia-metric-label">Cash-on-Cash Return</span><span class="reia-metric-value" style="color:${this.roiColor(result.coc)}">${result.coc.toFixed(1)}%</span></div>
+              <div class="reia-metric"><span class="reia-metric-label">Cap Rate</span><span class="reia-metric-value">${result.capRate.toFixed(1)}%</span></div>
+              <div class="reia-metric"><span class="reia-metric-label">Gross Rent Multiplier</span><span class="reia-metric-value">${result.grm.toFixed(1)}</span></div>
+            </div>
+          </div>
+          <div class="reia-card" style="margin-top:12px">
+            <h3>📈 Additional Analysis</h3>
+            <div class="reia-grid">
+              <div class="col-6">
+                <div class="reia-metric"><span class="reia-metric-label">Effective Monthly Rent</span><span class="reia-metric-value">$${result.effectiveRent.toFixed(0)}</span></div>
+                <div class="reia-metric"><span class="reia-metric-label">Total Monthly Expenses</span><span class="reia-metric-value">$${result.totalMonthlyExpenses.toFixed(0)}</span></div>
+              </div>
+              <div class="col-6">
+                <div class="reia-metric"><span class="reia-metric-label">Debt Service Coverage</span><span class="reia-metric-value">${result.dscr.toFixed(2)}x</span></div>
+                <div class="reia-metric"><span class="reia-metric-label">Break-Even Ratio</span><span class="reia-metric-value">${(result.breakEven*100).toFixed(1)}%</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="reia-card" style="margin-top:12px">
+            <div class="reia-grid">
+              <div class="col-6">
+                <div class="reia-metric"><span class="reia-metric-label">Internal Rate of Return (IRR)</span><span class="reia-metric-value">${result.irrValue.toFixed(1)}%</span></div>
+                <div class="reia-metric"><span class="reia-metric-label">Net Present Value (NPV)</span><span class="reia-metric-value">$${result.npvValue.toFixed(0).toLocaleString()}</span></div>
+              </div>
+            </div>
+            ${proFormaHtml}
+          </div>
+          <div style="margin-top: 12px; padding: 14px; border:2px solid ${result.color}; border-radius:12px; background:${result.color}15; text-align:center">
+            <strong style="color:${result.color}">${result.assessment}</strong>
+          </div>`;
+
+        const r = document.getElementById('analysis-results');
+        const c = document.getElementById('analysis-content');
+        if (r && c) { r.style.display = 'block'; c.innerHTML = html; r.scrollIntoView({ behavior: 'smooth' }); }
+
+        // Mirror latest results to the Analyzer -> Pro Forma hub panel
+        const proxy = document.getElementById('latest-results-proxy');
+        if (proxy) { proxy.innerHTML = html; }
+
+        this.updateDashboard();
+        this.notify('Deal analyzed successfully', 'success');
+      }
+
+      showAnalysisMessage(msg) {
+        const r = document.getElementById('analysis-results');
+        const c = document.getElementById('analysis-content');
+        if (r && c) {
+          r.style.display = 'block';
+          c.innerHTML = `<div style="color:var(--danger-color); text-align:center"><strong>${msg}</strong></div>`;
+        }
+      }
+
+      exportAnalysisCSV() {
+        if (!this.currentAnalysis) { this.notify('Analyze a deal first', 'error'); return; }
+        const a = this.currentAnalysis;
+        const row = [{
+          'Property Address': a.address,
+          'Purchase Price': a.purchasePrice,
+          'Monthly Rent': a.monthlyRent,
+          'Monthly Cash Flow': a.monthlyCashFlow.toFixed(2),
+          'Cash-on-Cash Return (%)': a.cashOnCashReturn.toFixed(2),
+          'Cap Rate (%)': a.capRate.toFixed(2),
+          'Total Initial Investment': a.totalInitialInvestment,
+          'Deal Assessment': a.dealAssessment ? a.dealAssessment : '',
+          'Analysis Date': a.analysisDate.toLocaleDateString(),
+          'IRR (%)': a.details.irr.toFixed(2),
+          'NPV': a.details.npv.toFixed(2)
+        }];
+        downloadFile(objectsToCSV(row), `Deal_Analysis_${a.address.replace(/[^a-zA-Z0-9]/g,'_')}.csv`, 'text/csv');
+        this.notify('Exported analysis CSV', 'success');
+      }
+
+      exportAnalysisXLSX() {
+        if (!this.currentAnalysis) { this.notify('Analyze a deal first', 'error'); return; }
+        const a = this.currentAnalysis;
+        const row = [{
+          'Property Address': a.address,
+          'Purchase Price': a.purchasePrice,
+          'Monthly Rent': a.monthlyRent,
+          'Monthly Cash Flow': a.monthlyCashFlow.toFixed(2),
+          'Cash-on-Cash Return (%)': a.cashOnCashReturn.toFixed(2),
+          'Cap Rate (%)': a.capRate.toFixed(2),
+          'Total Initial Investment': a.totalInitialInvestment,
+          'Deal Assessment': a.dealAssessment ? a.dealAssessment : '',
+          'Analysis Date': a.analysisDate.toLocaleDateString(),
+          'IRR (%)': a.details.irr.toFixed(2),
+          'NPV': a.details.npv.toFixed(2)
+        }];
+        exportToXLSX(row, `Deal_Analysis_${a.address.replace(/[^a-zA-Z0-9]/g,'_')}.xlsx`);
+        this.notify('Exported analysis XLSX', 'success');
+      }
+
+      generateLOI() {
+        if (!this.currentAnalysis) { this.notify('Analyze a deal first', 'error'); return; }
+        const a = this.currentAnalysis;
+        const loi = `LETTER OF INTENT
+
+Date: ${new Date().toLocaleDateString()}
+
+Property Address: ${a.address}
+Purchase Price: $${a.purchasePrice.toLocaleString()}
+
+Dear Property Owner,
+
+I am writing to express my interest in purchasing the above-referenced property. Based on my analysis, I would like to submit the following offer:
+
+PURCHASE TERMS:
+- Purchase Price: $${a.purchasePrice.toLocaleString()}
+- Down Payment: $${a.details.downPayment.toLocaleString()}
+- Financing: $${a.details.loanAmount.toLocaleString()}
+- Expected Monthly Cash Flow: $${a.monthlyCashFlow.toFixed(0)}
+- Projected ROI: ${a.cashOnCashReturn.toFixed(1)}%
+
+This letter of intent is non-binding and subject to:
+- Property inspection and due diligence
+- Financing approval
+- Title review and clear title
+- Final purchase agreement execution
+
+Sincerely,
+[Your Name]
+[Your Contact Information]
+
+---
+Generated by Real Estate Investment Analyzer Pro
+Analysis Date: ${a.analysisDate.toLocaleDateString()}`;
+        downloadFile(loi, `LOI_${a.address.replace(/[^a-zA-Z0-9]/g,'_')}.txt`, 'text/plain');
+        this.notify('Generated LOI', 'success');
+      }
+
+      saveToPortfolio() {
+        if (!this.currentAnalysis) { this.notify('Analyze a deal first', 'error'); return; }
+        const a = this.currentAnalysis;
+        const existing = this.properties.find(p => p.address === a.address);
+        const prop = { id: existing?.id || Date.now(), address: a.address, price: a.purchasePrice, rent: a.monthlyRent, type: a.type || 'single-family', roi: a.cashOnCashReturn, capRate: a.capRate, cashFlow: a.monthlyCashFlow, dateAdded: existing?.dateAdded || new Date() };
+        if (existing) { Object.assign(existing, prop); } else { this.properties.push(prop); }
+        this.saveState();
+        this.updatePortfolioDisplay();
+        this.updateDashboard();
+        this.notify('Saved to portfolio', 'success');
+      }
+
+      updatePortfolioDisplay() {
+        const list = document.getElementById('portfolio-list');
+        if (!list) return;
+        if (!this.properties.length) {
+          list.innerHTML = '<p>No properties in portfolio. Analyze a deal and click Save.</p>';
+          return;
+        }
+        list.innerHTML = this.properties.map(p => `
+          <div class="reia-card" style="margin-bottom:10px">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <div>
+                <strong>${p.address}</strong>
+                <div style="color:var(--text-secondary)">${p.type.replace('-', ' ')}</div>
+              </div>
+              <div style="display:flex; gap:8px">
+                <button class="reia-btn secondary" data-action="analyze" data-id="${p.id}">Analyze</button>
+                <button class="reia-btn danger" data-action="remove" data-id="${p.id}">Remove</button>
+              </div>
+            </div>
+            <div class="reia-metric"><span class="reia-metric-label">Purchase Price</span><span class="reia-metric-value">$${p.price.toLocaleString()}</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">Monthly Rent</span><span class="reia-metric-value">$${p.rent.toLocaleString()}</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">Monthly Cash Flow</span><span class="reia-metric-value" style="color:${(p.cashFlow||0)>=0?'var(--success-color)':'var(--danger-color)'}">$${(p.cashFlow||0).toFixed(0)}</span></div>
+            <div class="reia-metric"><span class="reia-metric-label">ROI</span><span class="reia-metric-value" style="color:${this.roiColor(p.roi||0)}">${(p.roi||0).toFixed(1)}%</span></div>
+          </div>
+        `).join('');
+        list.querySelectorAll('button[data-action]')?.forEach(btn => {
+          const id = parseInt(btn.getAttribute('data-id'), 10);
+          const action = btn.getAttribute('data-action');
+          if (action === 'remove') btn.onclick = () => this.removeFromPortfolio(id);
+          if (action === 'analyze') btn.onclick = () => this.loadIntoAnalyzer(id);
+        });
+      }
+
+      removeFromPortfolio(id) {
+        this.properties = this.properties.filter(p => p.id !== id);
+        this.saveState();
+        this.updatePortfolioDisplay();
+        this.updateDashboard();
+        this.notify('Removed from portfolio', 'info');
+      }
+
+      loadIntoAnalyzer(id) {
+        const p = this.properties.find(x => x.id === id);
+        if (!p) return;
+        document.getElementById('property-address').value = p.address;
+        document.getElementById('purchase-price').value = p.price;
+        document.getElementById('monthly-rent').value = p.rent;
+        this.switchSection('analyzer');
+        this.openPanel('panel-analyzer-inputs');
+        this.notify('Loaded portfolio property into analyzer', 'info');
+      }
+
+      exportPortfolioCSV() {
+        if (!this.properties.length) { this.notify('No properties to export', 'error'); return; }
+        const rows = this.properties.map(p => ({
+          'Property Address': p.address,
+          'Property Type': p.type,
+          'Purchase Price': p.price,
+          'Monthly Rent': p.rent,
+          'Monthly Cash Flow': p.cashFlow || 0,
+          'ROI (%)': (p.roi || 0).toFixed(2),
+          'Cap Rate (%)': (p.capRate || 0).toFixed(2),
+          'Date Added': (p.dateAdded instanceof Date ? p.dateAdded : new Date(p.dateAdded)).toLocaleDateString()
+        }));
+        downloadFile(objectsToCSV(rows), 'Portfolio_Export.csv', 'text/csv');
+        this.notify('Exported portfolio CSV', 'success');
+      }
+
+      exportPortfolioXLSX() {
+        if (!this.properties.length) { this.notify('No properties to export', 'error'); return; }
+        const rows = this.properties.map(p => ({
+          'Property Address': p.address,
+          'Property Type': p.type,
+          'Purchase Price': p.price,
+          'Monthly Rent': p.rent,
+          'Monthly Cash Flow': p.cashFlow || 0,
+          'ROI (%)': (p.roi || 0).toFixed(2),
+          'Cap Rate (%)': (p.capRate || 0).toFixed(2),
+          'Date Added': (p.dateAdded instanceof Date ? p.dateAdded : new Date(p.dateAdded)).toLocaleDateString()
+        }));
+        exportToXLSX(rows, 'Portfolio_Export.xlsx');
+        this.notify('Exported portfolio XLSX', 'success');
+      }
+
+      generatePortfolioReport() {
+        const lines = [];
+        lines.push('Portfolio Report');
+        lines.push('Date: ' + new Date().toLocaleString());
+        lines.push('------------------------------');
+        if (!this.properties.length) {
+          lines.push('No properties in portfolio.');
+        } else {
+          this.properties.forEach((p, i) => {
+            lines.push(`${i+1}. ${p.address}`);
+            lines.push(`   Price: $${p.price.toLocaleString()}  Rent: $${p.rent.toLocaleString()}`);
+            lines.push(`   ROI: ${(p.roi||0).toFixed(1)}%  Cap: ${(p.capRate||0).toFixed(1)}%  CF: $${(p.cashFlow||0).toFixed(0)}`);
+            lines.push('');
+          });
+        }
+        downloadFile(lines.join('
+'), 'Portfolio_Report.txt', 'text/plain');
+        this.notify('Generated portfolio report', 'success');
+      }
+
+      compareScenarios() {
+        const purchasePrice = parseFloat(document.getElementById('purchase-price').value) || 0;
+        const monthlyRent = parseFloat(document.getElementById('monthly-rent').value) || 0;
+        const otherIncome = parseFloat(document.getElementById('other-income').value) || 0;
+        const vacancyRate = (parseFloat(document.getElementById('vacancy-rate').value) || 5) / 100;
+        const mgmtPct = (parseFloat(document.getElementById('property-management').value) || 8) / 100;
+        const maintenance = parseFloat(document.getElementById('maintenance').value) || 0;
+        const insTaxes = parseFloat(document.getElementById('insurance-taxes').value) || 0;
+        const closing = parseFloat(document.getElementById('closing-costs').value) || 0;
+        const reno = parseFloat(document.getElementById('renovation-costs').value) || 0;
+        const other = parseFloat(document.getElementById('other-costs').value) || 0;
+
+        if (!purchasePrice || !monthlyRent) { this.notify('Enter at least purchase price and monthly rent for comparison', 'error'); return; }
+
+        const scenarios = [];
+        const s1_dp = parseFloat(document.getElementById('scenario1-dp').value) || 20;
+        const s1_rate = parseFloat(document.getElementById('scenario1-rate').value) || 6.5;
+        const s1_term = parseFloat(document.getElementById('scenario1-term').value) || 30;
+        scenarios.push({ name: 'Scenario 1', dp: s1_dp, rate: s1_rate, term: s1_term });
+
+        const s2_dp = parseFloat(document.getElementById('scenario2-dp').value) || 25;
+        const s2_rate = parseFloat(document.getElementById('scenario2-rate').value) || 7.0;
+        const s2_term = parseFloat(document.getElementById('scenario2-term').value) || 20;
+        scenarios.push({ name: 'Scenario 2', dp: s2_dp, rate: s2_rate, term: s2_term });
+
+        const results = scenarios.map(s => {
+          const res = this.calculateAnalysis(purchasePrice, s.dp, s.rate, s.term, monthlyRent, otherIncome, vacancyRate, mgmtPct, maintenance, insTaxes, closing, reno, other);
+          return { name: s.name, monthlyCashFlow: res.monthlyCashFlow, coc: res.coc, capRate: res.capRate, totalInitial: res.totalInitial, irr: res.irrValue, npv: res.npvValue, equity5yr: res.annualEquity[4] || 0 };
+        });
+
+        let tableHtml = '<table class="scenario-compare-table"><thead><tr><th>Scenario</th><th>Monthly CF</th><th>CoC ROI (%)</th><th>Cap Rate (%)</th><th>Initial Inv.</th><th>IRR (%)</th><th>NPV</th><th>Equity (Yr 5)</th></tr></thead><tbody>';
+        results.forEach(r => {
+          tableHtml += `<tr>
+            <td><strong>${r.name}</strong></td>
+            <td style="color:${r.monthlyCashFlow>=0?'var(--success-color)':'var(--danger-color)'}">$${r.monthlyCashFlow.toFixed(0)}</td>
+            <td style="color:${this.roiColor(r.coc)}">${r.coc.toFixed(1)}%</td>
+            <td>${r.capRate.toFixed(1)}%</td>
+            <td>$${r.totalInitial.toLocaleString()}</td>
+            <td>${r.irr.toFixed(1)}%</td>
+            <td>$${r.npv.toFixed(0).toLocaleString()}</td>
+            <td>$${r.equity5yr.toFixed(0).toLocaleString()}</td>
+          </tr>`;
+        });
+        tableHtml += '</tbody></table>';
+
+        const compareResultsDiv = document.getElementById('scenario-compare-results');
+        if (compareResultsDiv) {
+          compareResultsDiv.innerHTML = tableHtml;
+          compareResultsDiv.style.display = 'block';
+        }
+        this.notify('Scenarios compared', 'success');
+      }
+
+      saveState() { localStorage.setItem('reia-portfolio', JSON.stringify(this.properties)); }
+      loadState() { try { const saved = JSON.parse(localStorage.getItem('reia-portfolio') || '[]'); if (Array.isArray(saved)) this.properties = saved; } catch(e) { /* ignore */ } }
+
+      attachGlobalHandlers() {
+        // Tab switching
+        document.getElementById('themeToggleBtn').addEventListener('click', () => this.toggleTheme());
+        document.querySelectorAll('.reia-nav-btn').forEach(btn => btn.addEventListener('click', () => this.switchSection(btn.getAttribute('data-section'))));
+
+        // Collapsibles
+        document.querySelectorAll('.reia-collapsible').forEach(c => { const h = c.querySelector('.reia-collapsible-header'); if (h) h.addEventListener('click', () => this.toggleCollapsible(c)); });
+
+        // Module tiles → subpanels
+        document.querySelectorAll('[data-open]').forEach(btn => btn.addEventListener('click', () => this.openPanel(btn.getAttribute('data-open'))));
+        // Quick jumps to sections
+        document.querySelectorAll('[data-jump]').forEach(btn => btn.addEventListener('click', () => this.switchSection(btn.getAttribute('data-jump'))));
+
+        // Dashboard exports
+        document.getElementById('exportPortfolioCSVBtn').addEventListener('click', () => this.exportPortfolioCSV());
+        document.getElementById('exportPortfolioXLSXBtn').addEventListener('click', () => this.exportPortfolioXLSX());
+        document.getElementById('portfolioReportBtn').addEventListener('click', () => this.generatePortfolioReport());
+
+        // Finder
+        document.getElementById('searchBtn').addEventListener('click', () => this.searchProperties());
+
+        // Analyzer
+        document.getElementById('analyzeBtn').addEventListener('click', () => this.analyzeDeal());
+        document.getElementById('exportAnalysisCSVBtn').addEventListener('click', () => this.exportAnalysisCSV());
+        document.getElementById('exportAnalysisXLSXBtn').addEventListener('click', () => this.exportAnalysisXLSX());
+        document.getElementById('generateLoiBtn').addEventListener('click', () => this.generateLOI());
+        document.getElementById('saveToPortfolioBtn').addEventListener('click', () => this.saveToPortfolio());
+        document.getElementById('compareScenariosBtn').addEventListener('click', () => this.compareScenarios());
+
+        // Portfolio actions
+        document.getElementById('addPropertyBtn').addEventListener('click', () => this.addProperty());
+        document.getElementById('exportPortfolioCSVBtn2').addEventListener('click', () => this.exportPortfolioCSV());
+        document.getElementById('exportPortfolioXLSXBtn2').addEventListener('click', () => this.exportPortfolioXLSX());
+        document.getElementById('portfolioReportBtn2').addEventListener('click', () => this.generatePortfolioReport());
+        document.getElementById('clearPortfolioBtn').addEventListener('click', () => { if (confirm('Clear entire portfolio?')) { this.properties = []; this.saveState(); this.updatePortfolioDisplay(); this.updateDashboard(); this.notify('Portfolio cleared', 'info'); } });
+      }
+    }
+
+    window.reiaApp = new EnhancedREIAApp();
+  </script>
+</body>
+</html>
