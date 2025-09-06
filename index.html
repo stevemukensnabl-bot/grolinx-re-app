@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GroLinx REI • v1.3.5</title>
+  <meta name="description" content="Analyze deals, manage investors, and find opportunities" />
+  <style>
+    :root{
+      --primary:#133463;
+      --accent:#3a5f9a;
+      --gray-bg:#f8fafc;
+      --gray-1:#eef2f7;
+      --gray-2:#e5e7eb;
+      --text:#0f172a;
+      --subtext:#475569;
+      --muted:#64748b;
+      --success:#10b981;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+      --card:#ffffff;
+      --tabsbar:#e2e8f0; /* Changed to gray */
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background: #f1f5f9;
+    }
+    #brandheader{ background: var(--primary); color:#fff; padding:22px 16px; }
+    .row{ display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    .spacer{ flex:1; }
+    .logo{ width:44px;height:44px;border-radius:10px;background:#ffffff22; display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px; }
+    .title{ font-weight:900; font-size:24px; }
+    .subtitle{ opacity:.95; font-size:13px; }
+    #module-tabs-bar{ background: var(--tabsbar); padding:12px 16px; border-bottom:2px solid var(--warn); box-shadow:0 1px 0 rgba(0,0,0,0.03); text-align: center; } /* Centered */
+    button{ cursor:pointer }
+    .pill{ padding:10px 14px; border-radius:999px; border:2px solid var(--gray-2); background:#fff; color:var(--text); font-weight:800; }
+    .pill.active{ background: var(--primary); color: #fff; border-color: var(--primary); box-shadow:0 0 0 2px #3a5f9a22 inset; } /* Dark blue active tab */
+    .minipill{ padding:8px 12px; border-radius:999px; border:1px solid var(--gray-2); background:#fff; color:var(--text); font-weight:800; }
+    .minipill.active{ border-color:var(--accent); color:var(--primary); box-shadow:0 0 0 2px #3a5f9a22 inset; }
+    .btn{ padding:8px 12px; border-radius:8px; border:none; background:var(--primary); color:#fff; font-weight:700; }
+    .btn-ghost{ padding:8px 12px; border-radius:8px; background:transparent; color:var(--accent); border:1px solid var(--accent); font-weight:700; }
+    main{ padding:16px; }
+    .card{ background:var(--card); border:1px solid var(--gray-2); border-radius:12px; padding:12px; }
+    .grid-2{ display:grid; grid-template-columns:1.2fr 1fr; gap:12px; }
+    .grid-2-eq{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    .kvp{ display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px dashed var(--gray-2); }
+    .muted{ color:var(--muted) }
+    .small{ font-size:12px }
+    .metric{ padding:10px; border-radius:10px; background:#f1f5f9; }
+    .metric .label{ font-size:12px; color:var(--subtext) }
+    .metric .value{ font-weight:700 }
+    input, select, textarea{ padding:10px 12px; border-radius:8px; border:1px solid var(--gray-2); width:100%; background:#fff; color:var(--text); }
+    label{ font-size:12px; color:var(--subtext) }
+    .field{ display:flex; flex-direction:column; gap:4px; margin-top:8px; }
+    table{ width:100%; border-collapse:collapse; table-layout:auto }
+    th, td{ text-align:left; padding:8px; border-bottom:1px solid var(--gray-2); white-space:nowrap; min-width:110px }
+    thead tr{ background:#f1f5f9 }
+    .scroll-x{ overflow-x:auto }
+    footer{ padding:12px; text-align:center; color:var(--muted) }
+    @media (max-width:1024px){ .grid-2, .grid-2-eq{ grid-template-columns:1fr } }
+  </style>
+</head>
+<body>
+  <div id="brandheader">
+    <div class="row">
+      <div class="logo">G</div>
+      <div>
+        <div class="title">GroLinx Real Estate Investment Platform</div>
+        <div class="subtitle">Analyze deals, manage investors, and find opportunities</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="row" style="gap:8px">
+        <span class="small" style="opacity:0.9">Plan</span>
+        <button id="planToggle" class="pill" style="background:#fff;color:var(--primary);">Basic</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="module-tabs-bar">
+    <nav id="moduleTabs" class="row" style="gap:8px; margin:6px 0; align-items:center; justify-content: center;"></nav> <!-- Centered tabs -->
+  </div>
+
+  <main>
+    <div id="app"></div>
+  </main>
+
+  <footer>GroLinx • v1.3.5 • Production build</footer>
+
+  <script>
+    console.log("GroLinx v1.3.5 loaded at", new Date().toISOString());
+
+    const money = (n, d=0) => (n==null || isNaN(n)) ? '-' : ('$' + Number(n).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d}));
+    const pct   = n => (n==null || isNaN(n)) ? '-' : ((Number(n)*100).toFixed(2) + '%');
+
+    function monthlyPI(loan, annualRate, years){
+      if(!loan || !years) return 0;
+      const r = (annualRate || 0) / 12;
+      const n = years * 12;
+      if(r === 0) return loan / n;
+      return loan * (r * Math.pow(1+r, n)) / (Math.pow(1+r, n) - 1);
+    }
+
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function buildPeriod(startMonth, startYear){
+      const labels=[];
+      let m=startMonth, y=startYear;
+      for(let i=0;i<12;i++){
+        labels.push({m,y,label:`${MONTHS[m]} ${y}`});
+        m=(m+1)%12; if(m===0) y+=1;
+      }
+      return labels;
+    }
+
+    function downloadFile(name, content, type){
+      const blob = new Blob([content], {type});
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      setTimeout(()=> URL.revokeObjectURL(url), 1200);
+    }
+    function exportCSV(rows, filename='export.csv'){
+      const csv = rows.map(r => r.map(v => {
+        const s = String(v);
+        return s.includes(',') ? ('"' + s.replace(/"/g,'""') + '"') : s;
+      }).join(',')).join('
+');
+      downloadFile(filename, csv, 'text/csv');
+    }
+    function exportDoc(title, paragraphs){
+      const content = `
+${title}
+
+${paragraphs.join('
+
+')}
+`;
+      downloadFile(title.replace(/\s+/g,'_')+'.doc', content, 'application/msword');
+    }
+
+    const state = {
+      isEnterprise: false,
+      activeModule: 'dealanalyzer',
+      modules: [
+        {id:'dashboard', label:'Investor Dashboard'},
+        {id:'finder', label:'Investment Finder'},
+        {id:'dealanalyzer', label:'Deal Analyzer'}
+      ],
+      listingForAnalyzer: null,
+      deal: {
+        name:'123 Main St', market:'Anytown, USA', price:1500000, units:14, netRSF:7472,
+        downPct:0.35, downAmt:1500000*0.35, loanAmt:1500000*0.65, rate:0.065, termYears:30,
+        closingCostPct:0.03, rehab:50000, vacancyRate:0.06, otherIncome:0, saleCap:0.06, sellCostPct:0.05
+      },
+      scenarios: [
+        { id:1, name:'Base (65% LTV, 6.5%, 30yr)', loanAmt: 1500000*0.65, rate:0.065, termYears:30 },
+        { id:2, name:'Alt A (70% LTV, 6.75%, 30yr)', loanAmt: Math.round(1500000*0.70), rate: 0.0675, termYears: 30 },
+        { id:3, name:'Alt B (60% LTV, 6.25%, 25yr)', loanAmt: Math.round(1500000*0.60), rate: 0.0625, termYears: 25 },
+      ],
+      t12: {
+        startMonth: (new Date()).getMonth(),
+        startYear : (new Date()).getFullYear() - 1,
+        rows: [
+          {id:1, category:'Taxes', months:Array(12).fill(7100/12)},
+          {id:2, category:'Insurance', months:Array(12).fill(6585/12)},
+          {id:3, category:'Maintenance', months:Array(12).fill(9760/12)},
+          {id:4, category:'Utilities', months:Array(12).fill(7200/12)},
+          {id:5, category:'Management (7%)', months:Array(12).fill(9000/12)},
+        ]
+      },
+      finder: {
+        query: '',
+        filters: {
+          type:'any', minCap:0, minUnits:'', maxUnits:'', minPrice:'', maxPrice:'',
+          minCashFlow:'', market:'', minDSCR:'', yearBuiltMin:'', class:'any'
+        },
+        sample: [
+          {id:1,title:'8-unit value-add', price:950000, units:8, city:'Austin, TX', gsi: 98000, noi: 64000, type:'multi-family', cap: 0.067, cashFlow: 12000, dscr:1.32, yearBuilt:1985, class:'B'},
+          {id:2,title:'14-unit stabilized', price:1500000, units:14, city:'Orlando, FL', gsi: 175200, noi: 85500, type:'multi-family', cap: 0.057, cashFlow: 16000, dscr:1.25, yearBuilt:1992, class:'B+'},
+          {id:3,title:'Neighborhood retail', price:1250000, units:5, city:'Phoenix, AZ', gsi: 140000, noi: 90000, type:'retail', cap: 0.072, cashFlow: 23000, dscr:1.40, yearBuilt:2001, class:'A-'},
+        ]
+      },
+      dashboard: {
+        activeInnerTab: 'profile',
+        profile: {name:'GroLinx User', email:'user@grolinx.com', phone:'', commitment:250000, preferences:'MF deals in TX/FL, 50-150 units'},
+        investors:[
+          {id:1,name:'Acme Capital', contact:'invest@acme.com', committed:2000000, deployed:1200000},
+          {id:2,name:'BluePeak LP', contact:'team@bluepeak.com', committed:1000000, deployed:450000},
+        ],
+        activeId: 1,
+        form:{name:'', contact:'', committed:0}
+      },
+      dealTabs: 'summary'
+    };
+
+    function dealCalcs(){
+      const d = state.deal;
+      const grossYr1 = 142440;
+      const vacYr1   = grossYr1 * (d.vacancyRate||0);
+      const egiYr1   = grossYr1 - vacYr1 + (d.otherIncome||0);
+      const t12TotalAnnual = state.t12.rows.reduce((s,r)=> s + r.months.reduce((a,b)=> a+(Number(b)||0), 0), 0);
+      const pmt = monthlyPI(d.loanAmt, d.rate, d.termYears);
+      const ads = pmt * 12;
+      const noi = egiYr1 - t12TotalAnnual;
+      const cf  = noi - ads;
+      const cap = d.price ? (noi / d.price) : 0;
+      const coc = d.downAmt ? (cf / d.downAmt) : 0;
+      return {grossYr1, vacYr1, egiYr1, t12TotalAnnual, pmt, ads, noi, cf, cap, coc};
+    }
+
+    function renderModuleTabs(){
+      const bar = document.getElementById('moduleTabs');
+      bar.innerHTML = '';
+      state.modules.forEach(m=>{
+        const btn = document.createElement('button');
+        btn.className = 'pill' + (state.activeModule===m.id ? ' active' : '');
+        btn.textContent = m.label;
+        btn.addEventListener('click', ()=>{ state.activeModule = m.id; render(); });
+        bar.appendChild(btn);
+      });
+      const planToggle = document.getElementById('planToggle');
+      planToggle.textContent = state.isEnterprise ? 'Enterprise' : 'Basic';
+      planToggle.style.color = state.isEnterprise ? 'var(--success)' : 'var(--primary)';
+      planToggle.addEventListener('click', ()=>{ state.isEnterprise = !state.isEnterprise; render(); }, { once:true });
+    }
+
+    function renderDashboard(container){
+      const S = state.dashboard;
+      const isEnt = state.isEnterprise;
+
+      const investorsList = S.investors.map(i => `
+        <button data-investor="${i.id}" class="block" style="
+          display:block;width:100%;text-align:left;padding:8px 10px;border-radius:8px;
+          border:1px solid ${i.id===S.activeId ? 'var(--accent)' : 'var(--gray-2)'};
+          background:${i.id===S.activeId ? 'var(--gray-1)' : '#fff'};
+          margin-bottom:6px;
+        ">${i.name}</button>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Investor Dashboard</div>
+          ${isEnt ? '<div style="color:var(--success);font-weight:700">Enterprise</div>' : ''}
+        </div>
+
+        <nav class="row" style="gap:8px;margin-bottom:12px">
+          <button id="tabProfile" class="minipill ${S.activeInnerTab==='profile'?'active':''}">My Profile</button>
+          ${isEnt ? `<button id="tabInvestors" class="minipill ${S.activeInnerTab==='investors'?'active':''}">Investors (Enterprise)</button>`:''}
+        </nav>
+
+        ${S.activeInnerTab==='profile' ? `
+          <div class="grid-2-eq">
+            <div class="card">
+              <div style="font-weight:700;margin-bottom:6px">User Profile</div>
+              <div class="field"><label>Name</label><input id="pName" value="${S.profile.name}"></div>
+              <div class="field"><label>Email</label><input id="pEmail" value="${S.profile.email}"></div>
+              <div class="field"><label>Phone</label><input id="pPhone" value="${S.profile.phone}"></div>
+              <div class="field"><label>Investment Commitment</label><input id="pCommit" type="number" value="${S.profile.commitment}"></div>
+              <div class="field"><label>Preferences</label><input id="pPrefs" value="${S.profile.preferences}"></div>
+            </div>
+            <div class="card">
+              <div style="font-weight:700;margin-bottom:6px">Summary</div>
+              <div class="grid-2-eq" style="gap:8px;margin-top:8px">
+                <div class="metric"><div class="label">Commitment</div><div class="value">${money(S.profile.commitment)}</div></div>
+                <div class="metric"><div class="label">Focus</div><div class="value">${S.profile.preferences||'—'}</div></div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        ${(S.activeInnerTab==='investors' && isEnt) ? `
+          <div class="grid-2" style="grid-template-columns:260px 1fr">
+            <div class="card">
+              <div style="font-weight:700;margin-bottom:6px">Investors</div>
+              ${investorsList}
+              <div style="margin-top:8px;font-weight:700">Add Investor</div>
+              <input id="addName" placeholder="Name" style="margin-top:6px">
+              <input id="addContact" placeholder="Contact" style="margin-top:6px">
+              <input id="addCommitted" placeholder="Committed" type="number" style="margin-top:6px">
+              <button id="addInvestorBtn" class="btn" style="width:100%;margin-top:8px">Add</button>
+            </div>
+            <div class="card" id="investorDetail">
+              <!-- populated below -->
+            </div>
+          </div>
+        ` : ''}
+      `;
+
+      const tabProfile = container.querySelector('#tabProfile');
+      if(tabProfile){ tabProfile.addEventListener('click', ()=>{ S.activeInnerTab='profile'; render(); }); }
+      const tabInvestors = container.querySelector('#tabInvestors');
+      if(tabInvestors){ tabInvestors.addEventListener('click', ()=>{ S.activeInnerTab='investors'; render(); }); }
+
+      if(S.activeInnerTab==='profile'){
+        container.querySelector('#pName').addEventListener('input', e=>{ S.profile.name = e.target.value; });
+        container.querySelector('#pEmail').addEventListener('input', e=>{ S.profile.email= e.target.value; });
+        container.querySelector('#pPhone').addEventListener('input', e=>{ S.profile.phone= e.target.value; });
+        container.querySelector('#pCommit').addEventListener('input', e=>{ S.profile.commitment = Number(e.target.value)||0; });
+        container.querySelector('#pPrefs').addEventListener('input', e=>{ S.profile.preferences = e.target.value; });
+      }
+
+      if(S.activeInnerTab==='investors' && isEnt){
+        container.querySelectorAll('[data-investor]').forEach(btn=>{
+          btn.addEventListener('click', ()=>{ S.activeId = Number(btn.getAttribute('data-investor')); render(); });
+        });
+        container.querySelector('#addInvestorBtn').addEventListener('click', ()=>{
+          const name = container.querySelector('#addName').value.trim();
+          const contact = container.querySelector('#addContact').value.trim();
+          const committed = Number(container.querySelector('#addCommitted').value)||0;
+          if(!name) return;
+          const id = Math.max(0, ...S.investors.map(i=>i.id)) + 1;
+          S.investors.push({id,name,contact,committed,deployed:0});
+          S.activeId = id;
+          render();
+        });
+
+        const active = S.investors.find(i=> i.id===S.activeId);
+        const detail = container.querySelector('#investorDetail');
+        if(!active){ detail.innerHTML = '<div>Select an investor</div>'; return; }
+        detail.innerHTML = `
+          <div style="font-weight:800">${active.name}</div>
+          <div class="muted" style="margin-bottom:8px">${active.contact||'—'}</div>
+          <div class="grid-2-eq" style="gap:8px">
+            <div class="metric"><div class="label">Committed</div><div class="value">${money(active.committed)}</div></div>
+            <div class="metric"><div class="label">Deployed</div><div class="value">${money(active.deployed)}</div></div>
+          </div>
+          <div style="margin-top:10px;font-weight:700">Edit</div>
+          <div class="grid-2-eq" style="gap:8px">
+            <div class="field"><label>Name</label><input id="iName" value="${active.name}"></div>
+            <div class="field"><label>Contact</label><input id="iContact" value="${active.contact}"></div>
+            <div class="field"><label>Committed</label><input id="iCommitted" type="number" value="${active.committed}"></div>
+            <div class="field"><label>Deployed</label><input id="iDeployed" type="number" value="${active.deployed}"></div>
+          </div>
+        `;
+        detail.querySelector('#iName').addEventListener('input', e=>{ active.name = e.target.value; });
+        detail.querySelector('#iContact').addEventListener('input', e=>{ active.contact= e.target.value; });
+        detail.querySelector('#iCommitted').addEventListener('input', e=>{ active.committed = Number(e.target.value)||0; });
+        detail.querySelector('#iDeployed').addEventListener('input', e=>{ active.deployed  = Number(e.target.value)||0; });
+      }
+    }
+
+    function renderFinder(container){
+      const F = state.finder;
+
+      const results = F.sample.filter(s=>{
+        if(F.query && !(s.title.toLowerCase().includes(F.query.toLowerCase()) || s.city.toLowerCase().includes(F.query.toLowerCase()))) return false;
+        if(F.filters.type !== 'any' && s.type !== F.filters.type) return false;
+        return true;
+      });
+
+      container.innerHTML = `
+        <div class="card" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:800">Investment Finder</div>
+          <div class="muted">Advanced filters to match your buy box</div>
+        </div>
+
+        <div class="grid-2-eq" style="grid-template-columns: repeat(6, 1fr); gap:8px; align-items:end">
+          <div style="grid-column: span 2">
+            <label>Search (title/market)</label>
+            <input id="q" value="${F.query}" placeholder='"Austin" or "retail"'>
+          </div>
+          <div>
+            <label>Property Type</label>
+            <select id="fType">
+              <option value="any" ${F.filters.type==='any'?'selected':''}>Any</option>
+              <option value="multi-family" ${F.filters.type==='multi-family'?'selected':''}>Multi-family</option>
+              <option value="retail" ${F.filters.type==='retail'?'selected':''}>Retail</option>
+              <option value="industrial" ${F.filters.type==='industrial'?'selected':''}>Industrial</option>
+              <option value="office" ${F.filters.type==='office'?'selected':''}>Office</option>
+            </select>
+          </div>
+
+          <div></div><div></div>
+
+          <div>
+            <label>Min CAP</label>
+            <input id="minCap" type="number" step="0.0001" value="${F.filters.minCap}" placeholder="0.06">
+          </div>
+          <div>
+            <label>Min Cash Flow ($/yr)</label>
+            <input id="minCF" type="number" value="${F.filters.minCashFlow}" placeholder="15000">
+          </div>
+
+          <div>
+            <label>Min Price</label>
+            <input id="minPrice" type="number" value="${F.filters.minPrice}">
+          </div>
+          <div>
+            <label>Max Price</label>
+            <input id="maxPrice" type="number" value="${F.filters.maxPrice}">
+          </div>
+          <div>
+            <label>Min DSCR</label>
+            <input id="minDSCR" type="number" step="0.01" value="${F.filters.minDSCR}" placeholder="1.25">
+          </div>
+          <div>
+            <label>Market / City</label>
+            <input id="market" value="${F.filters.market}" placeholder="Austin, Orlando...">
+          </div>
+          <div>
+            <label>Min Year Built</label>
+            <input id="ybMin" type="number" value="${F.filters.yearBuiltMin}" placeholder="1990">
+          </div>
+          <div>
+            <label>Asset Class</label>
+            <select id="cls">
+              <option value="any" ${F.filters.class==='any'?'selected':''}>Any</option>
+              <option value="A" ${F.filters.class==='A'?'selected':''}>A</option>
+              <option value="A-" ${F.filters.class==='A-'?'selected':''}>A-</option>
+              <option value="B" ${F.filters.class==='B'?'selected':''}>B</option>
+              <option value="B+" ${F.filters.class==='B+'?'selected':''}>B+</option>
+              <option value="C" ${F.filters.class==='C'?'selected':''}>C</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="finderResults" style="margin-top:12px">
+          ${results.map(r=>`
+            <div class="card" style="margin-bottom:8px">
+              <div class="row" style="justify-content:space-between; align-items:center">
+                <div>
+                  <div style="font-weight:700">${r.title}</div>
+                  <div class="muted">${r.city} • ${r.units} units • ${money(r.price)} • CAP ${pct(r.cap)} • DSCR ${r.dscr?.toFixed(2)}</div>
+                </div>
+                <div>
+                  <button class="btn" data-open-analyzer="${r.id}">Open in Analyzer</button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      container.querySelector('#q').addEventListener('input', e=>{ F.query=e.target.value; render(); });
+      container.querySelector('#fType').addEventListener('change', e=>{ F.filters.type=e.target.value; render(); });
+      const maybeBind = (id, key) => { const el = container.querySelector(id); if(el) el.addEventListener('input', e=>{ F.filters[key]=e.target.value; render(); }); };
+      maybeBind('#minCap','minCap'); maybeBind('#minCF','minCashFlow'); maybeBind('#minPrice','minPrice'); maybeBind('#maxPrice','maxPrice'); maybeBind('#minDSCR','minDSCR'); maybeBind('#market','market'); maybeBind('#ybMin','yearBuiltMin');
+      if(container.querySelector('#cls')){ container.querySelector('#cls').addEventListener('change', e=>{ F.filters.class=e.target.value; render(); }); }
+
+      container.querySelectorAll('[data-open-analyzer]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = Number(btn.getAttribute('data-open-analyzer'));
+          const r = F.sample.find(x=> x.id===id);
+          if(r){
+            state.listingForAnalyzer = r;
+            state.deal.name   = r.title;
+            state.deal.market = r.city;
+            state.deal.price  = r.price;
+            state.deal.units  = r.units;
+            state.deal.downAmt= state.deal.price * (state.deal.downPct||0.35);
+            state.deal.loanAmt= state.deal.price - state.deal.downAmt;
+            const base = state.scenarios.find(s=> s.id===1);
+            if(base){ base.loanAmt = state.deal.loanAmt; }
+          }
+          state.activeModule = 'dealanalyzer';
+          render();
+        });
+      });
+    }
+
+    function renderDealAnalyzer(container){
+      const d = state.deal;
+      const active = state.dealTabs;
+      const {grossYr1, vacYr1, egiYr1, t12TotalAnnual, pmt, ads, noi, cf, cap, coc} = dealCalcs();
+
+      const subtabs = ['summary','inputs','financing','t12','apod','glossary'];
+      const subNav = `
+        <nav class="row" style="gap:8px;margin:8px 0 12px 0;flex-wrap:wrap">
+          ${subtabs.map(id=>{ const label = id.charAt(0).toUpperCase() + id.slice(1); return `<button class="minipill ${active===id?'active':''}" data-subtab="${id}">${label}</button>`; }).join('')}
+        </nav>
+      `;
+
+      const panelSummary = `
+        <div class="grid-2">
+          <div class="card">
+            <div class="grid-3">
+              <div class="metric"><div class="label">Purchase Price</div><div class="value">${money(d.price)}</div></div>
+              <div class="metric"><div class="label">Units</div><div class="value">${d.units}</div></div>
+              <div class="metric"><div class="label">Down Payment</div><div class="value">${money(d.downAmt)} (${pct(d.downPct)})</div></div>
+              <div class="metric"><div class="label">Loan Amount</div><div class="value">${money(d.loanAmt)}</div></div>
+              <div class="metric"><div class="label">Rate</div><div class="value">${pct(d.rate)}</div></div>
+              <div class="metric"><div class="label">Term</div><div class="value">${d.termYears} yrs</div></div>
+              <div class="metric"><div class="label">Closing Costs</div><div class="value">${pct(d.closingCostPct)}</div></div>
+              <div class="metric"><div class="label">Rehab Budget</div><div class="value">${money(d.rehab)}</div></div>
+              <div class="metric"><div class="label">Vacancy</div><div class="value">${pct(d.vacancyRate)}</div></div>
+              <div class="metric"><div class="label">Other Income</div><div class="value">${money(d.otherIncome)}</div></div>
+              <div class="metric"><div class="label">Exit Cap</div><div class="value">${pct(d.saleCap)}</div></div>
+              <div class="metric"><div class="label">Selling Costs</div><div class="value">${pct(d.sellCostPct)}</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div style="font-weight:800">Key Metrics (Yr 1)</div>
+            <div class="grid-2-eq" style="gap:8px;margin-top:8px">
+              <div class="metric"><div class="label">Cap Rate</div><div class="value">${pct(cap)}</div></div>
+              <div class="metric"><div class="label">Cash-on-Cash</div><div class="value">${pct(coc)}</div></div>
+              <div class="metric"><div class="label">Monthly P&I</div><div class="value">${money(pmt)}</div></div>
+              <div class="metric"><div class="label">Annual Debt</div><div class="value">${money(ads)}</div></div>
+              <div class="metric"><div class="label">EGI</div><div class="value">${money(egiYr1)}</div></div>
+              <div class="metric"><div class="label">NOI</div><div class="value">${money(noi)}</div></div>
+              <div class="metric"><div class="label">Cash Flow</div><div class="value">${money(cf)}</div></div>
+            </div>
+            <div class="row" style="gap:8px;margin-top:10px">
+              <button id="exportT12" class="btn">Export T12 CSV</button>
+              <button id="genLOI" class="btn-ghost">Generate LOI (DOC)</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const panelInputs = `
+        <div class="grid-2-eq">
+          <div class="card">
+            <div style="font-weight:800">Deal Inputs</div>
+            ${[
+              {id:'name', label:'Property Name', type:'text', value:d.name},
+              {id:'market', label:'Market', type:'text', value:d.market},
+              {id:'price', label:'Purchase Price', type:'number', value:d.price},
+              {id:'downPct', label:'Down % (0-1)', type:'number', step:'0.001', value:d.downPct},
+              {id:'downAmt', label:'Down Amount', type:'number', value:d.downAmt},
+              {id:'loanAmt', label:'Loan Amount', type:'number', value:d.loanAmt},
+              {id:'rate', label:'Rate (0-1)', type:'number', step:'0.0001', value:d.rate},
+              {id:'termYears', label:'Term (years)', type:'number', value:d.termYears},
+              {id:'closingCostPct', label:'Closing Cost % (0-1)', type:'number', step:'0.0001', value:d.closingCostPct},
+              {id:'rehab', label:'Rehab Budget', type:'number', value:d.rehab},
+              {id:'vacancyRate', label:'Vacancy (0-1)', type:'number', step:'0.0001', value:d.vacancyRate},
+              {id:'otherIncome', label:'Other Income (annual)', type:'number', value:d.otherIncome},
+              {id:'saleCap', label:'Exit Cap (0-1)', type:'number', step:'0.0001', value:d.saleCap},
+              {id:'sellCostPct', label:'Selling Costs % (0-1)', type:'number', step:'0.0001', value:d.sellCostPct},
+            ].map(f=>`
+              <div class="field">
+                <label>${f.label}</label>
+                <input id="in_${f.id}" type="${f.type}" ${f.step?`step="${f.step}"`:''} value="${f.value}">
+              </div>
+            `).join('')}
+          </div>
+          <div class="card">
+            <div style="font-weight:800">Projection Notes</div>
+            <div class="small muted" style="margin-top:6px">Hold Years: 6 • Rent bump: 3% • Expense bump: 5%</div>
+          </div>
+        </div>
+      `;
+
+      const dscrColor = (dscr)=>{ if(dscr==null) return 'var(--muted)'; if(dscr>=1.25) return 'var(--success)'; if(dscr>=1.20) return 'var(--warn)'; return 'var(--danger)'; };
+
+      const PERIOD = buildPeriod(state.t12.startMonth, state.t12.startYear);
+      const t12MonthlyTotals = PERIOD.map((_,i)=> state.t12.rows.reduce((s,r)=> s + (Number(r.months[i])||0), 0));
+
+      const panelFinancing = `
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <div style="font-weight:800">Financing Scenarios</div>
+            <button id="addScenario" class="btn">+ Add Scenario</button>
+          </div>
+          <div class="scroll-x" style="margin-top:10px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Loan Amount</th>
+                  <th>Rate</th>
+                  <th>Term (yrs)</th>
+                  <th>Monthly P&I</th>
+                  <th>Annual Debt</th>
+                  <th>DSCR</th>
+                  <th>Cash Flow</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${state.scenarios.map(s=>{
+                  const p  = monthlyPI(s.loanAmt, s.rate, s.termYears);
+                  const ad = p * 12;
+                  const dscr = ad ? (noi/ad) : null;
+                  const cfS  = noi - ad;
+                  return `
+                    <tr data-sid="${s.id}">
+                      <td><input class="sx_name" value="${s.name}"></td>
+                      <td><input class="sx_loan" type="number" value="${s.loanAmt}"></td>
+                      <td><input class="sx_rate" type="number" step="0.0001" value="${s.rate}"></td>
+                      <td><input class="sx_term" type="number" value="${s.termYears}"></td>
+                      <td>${money(p)}</td>
+                      <td>${money(ad)}</td>
+                      <td style="color:${dscrColor(dscr)}">${dscr==null?'-':dscr.toFixed(2)}</td>
+                      <td>${money(cfS)}</td>
+                      <td>
+                        <div class="row" style="gap:6px">
+                          <button class="btn sx_apply" style="padding:6px 10px">Apply</button>
+                          ${s.id!==1 ? `<button class="btn-ghost sx_delete">Delete</button>` : ''}
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          <div class="small muted" style="margin-top:10px">Apply sets the Deal Inputs loan, rate, and term. DSCR = NOI / Annual Debt using current Yr1 NOI.</div>
+        </div>
+      `;
+
+      const panelT12 = `
+        <div class="card">
+          <div class="row" style="gap:8px;align-items:center;margin-bottom:8px">
+            <span class="small">Start</span>
+            <select id="t12Month">${MONTHS.map((m,i)=> `<option value="${i}" ${i===state.t12.startMonth?'selected':''}>${m}</option>`).join('')}</select>
+            <select id="t12Year">${Array.from({length:20},(_,k)=> (new Date().getFullYear()-10+k)).map(y=> `<option value="${y}" ${y===state.t12.startYear?'selected':''}>${y}</option>`).join('')}</select>
+            <button id="t12Export" class="btn" style="padding:6px 10px">Export CSV</button>
+            <button id="t12AddRow" class="btn-ghost">+ Add Category</button>
+          </div>
+          <div class="scroll-x">
+            <table>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  ${PERIOD.map((p)=> `<th>${p.label}</th>`).join('')}
+                  <th>Annual</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${state.t12.rows.map((row)=> `
+                  <tr data-row="${row.id}">
+                    <td><input class="t12_cat" value="${row.category}"></td>
+                    ${row.months.map((v,mi)=> `<td><input class="t12_val" data-mi="${mi}" type="number" value="${v}"></td>`).join('')}
+                    <td>${money(row.months.reduce((a,b)=> a+(Number(b)||0),0))}</td>
+                    <td><button class="btn-ghost t12_delete" style="padding:6px 10px">Delete</button></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td><strong>Total</strong></td>
+                  ${t12MonthlyTotals.map(v=> `<td>${money(v)}</td>`).join('')}
+                  <td>${money(state.t12.rows.reduce((s,r)=> s + r.months.reduce((a,b)=> a+(Number(b)||0), 0), 0))}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div class="small muted" style="margin-top:8px">Tip: Scroll horizontally to view all months.</div>
+        </div>
+      `;
+
+      const panelAPOD = `
+        <div class="grid-2-eq">
+          <div class="card">
+            <div style="font-weight:800">APOD - Current</div>
+            <div class="kvp"><div class="muted">Gross Scheduled Income (GSI)</div><div>${money(grossYr1)}</div></div>
+            <div class="kvp"><div class="muted">Vacancy/Credit Loss</div><div>-${money(vacYr1)}</div></div>
+            <div class="kvp"><div class="muted">Other Income</div><div>${money(d.otherIncome||0)}</div></div>
+            <div class="kvp"><div style="color:var(--subtext);font-weight:700">Effective Gross Income (EGI)</div><div style="font-weight:700">${money(egiYr1)}</div></div>
+            <div style="height:6px"></div>
+            <div class="kvp"><div class="muted">Operating Expenses (T12)</div><div>-${money(t12TotalAnnual)}</div></div>
+            <div class="kvp"><div style="color:var(--subtext);font-weight:700">Net Operating Income (NOI)</div><div style="font-weight:700">${money(noi)}</div></div>
+            <div style="height:6px"></div>
+            <div class="kvp"><div class="muted">Annual Debt Service (P&I)</div><div>-${money(ads)}</div></div>
+            <div class="kvp"><div style="color:var(--subtext);font-weight:700">Cash Flow</div><div style="font-weight:700">${money(cf)}</div></div>
+          </div>
+          <div class="card">
+            <div style="font-weight:800">Notes</div>
+            <div style="font-size:13px" class="muted">Use Financing Scenarios to test different rate/term/LTV assumptions. Apply a scenario to update Deal Inputs.</div>
+          </div>
+        </div>
+      `;
+
+      const panelGlossary = `
+        <div class="card">
+          <div style="font-weight:800">Glossary</div>
+          <div style="display:grid;grid-template-columns:1fr 3fr;gap:10px;margin-top:8px">
+            ${[
+              ['Purchase Price','Price paid to acquire the property.'],
+              ['Units','Number of rentable units (for multi-tenant).'],
+              ['Down Payment','Buyer equity at purchase; equals Purchase Price minus Loan Amount.'],
+              ['Down %','Down Payment divided by Purchase Price.'],
+              ['Loan Amount','Debt principal at closing.'],
+              ['Rate','Annual interest rate on the loan (decimal).'],
+              ['Term','Amortization period in years.'],
+              ['Closing Costs','Transaction costs at closing, usually a % of price.'],
+              ['Rehab Budget','Capital improvements planned post-close.'],
+              ['Vacancy','Expected vacancy/credit loss as % of gross rents.'],
+              ['Other Income','Non-rent revenue (e.g., parking, laundry).'],
+              ['Exit Cap','Cap rate used to estimate sale price at disposition.'],
+              ['Selling Costs','Brokerage and other selling expenses as % of sale price.'],
+              ['GSI','Gross Scheduled Income — total potential rent at full occupancy.'],
+              ['EGI','Effective Gross Income — GSI minus vacancy plus other income.'],
+              ['Operating Expenses (T12)','Sum of operating costs over the trailing 12 months.'],
+              ['NOI','Net Operating Income — EGI minus operating expenses.'],
+              ['P&I','Principal and Interest — mortgage payment components.'],
+              ['Annual Debt Service','12 months of P&I payments.'],
+              ['Cash Flow','NOI minus Annual Debt Service.'],
+              ['Cap Rate','NOI divided by Purchase Price.'],
+              ['Cash-on-Cash','Annual cash flow divided by equity invested (Down Payment).'],
+              ['DSCR','Debt Service Coverage Ratio — NOI / Annual Debt Service.'],
+              ['RSF','Rentable Square Feet — used for per-RSF metrics.'],
+              ['T12','Trailing 12 months of operating data.'],
+            ].map(([k,t])=> `
+              <div style="font-weight:700">${k}</div>
+              <div style="color:#334155">${t}</div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = `
+        ${subNav}
+        ${active==='summary'   ? panelSummary   : ''}
+        ${active==='inputs'    ? panelInputs    : ''}
+        ${active==='financing' ? panelFinancing : ''}
+        ${active==='t12'       ? panelT12       : ''}
+        ${active==='apod'      ? panelAPOD      : ''}
+        ${active==='glossary'  ? panelGlossary  : ''}
+      `;
+
+      container.querySelectorAll('[data-subtab]').forEach(btn=>{ btn.addEventListener('click', ()=>{ state.dealTabs = btn.getAttribute('data-subtab'); render(); }); });
+
+      const exportBtn = container.querySelector('#exportT12');
+      if(exportBtn){ exportBtn.addEventListener('click', ()=>{ const period = buildPeriod(state.t12.startMonth, state.t12.startYear); const rows=[ ['Category', ...period.map(p=>p.label), 'Annual'] ]; state.t12.rows.forEach(r=>{ const total = r.months.reduce((a,b)=> a+(Number(b)||0),0); rows.push([r.category, ...r.months.map(v=> Number(v)||0), total]); }); const monthlyTotals = period.map((_,i)=> state.t12.rows.reduce((s,r)=> s + (Number(r.months[i])||0), 0)); const grandTotal = monthlyTotals.reduce((a,b)=> a+b, 0); rows.push(['TOTAL', ...monthlyTotals, grandTotal]); exportCSV(rows, `t12_${period[0].label.replace(/\s/g,'-')}_to_${period[11].label.replace(/\s/g,'-')}.csv`); }); }
+      const genLoiBtn = container.querySelector('#genLOI');
+      if(genLoiBtn){ genLoiBtn.addEventListener('click', ()=>{ const {cap, coc} = dealCalcs(); const title = 'Letter of Intent (Preview)'; const paras = [ `Property: ${d.name} (${d.market})`, `Price: ${money(d.price)} | Units: ${d.units}`, `Cap (Yr1 est): ${pct(cap)} | CoC (Yr1): ${pct(coc)}`, `Financing: Loan ${money(d.loanAmt)} @ ${pct(d.rate)} for ${d.termYears} yrs`, `Notes: Preview document generated in sandbox.` ]; exportDoc(title, paras); }); }
+
+      if(state.dealTabs==='inputs'){
+        const bindNum = (id, fn)=> { const el = container.querySelector(id); if(el) el.addEventListener('input', e=> { fn(Number(e.target.value)); render(); }); };
+        const bindStr = (id, fn)=> { const el = container.querySelector(id); if(el) el.addEventListener('input', e=> { fn(e.target.value); }); };
+        bindStr('#in_name', v=> state.deal.name = v);
+        bindStr('#in_market', v=> state.deal.market = v);
+        bindNum('#in_price', v=> { state.deal.price = v; state.deal.downAmt = (state.deal.downPct||0)*v; state.deal.loanAmt = v - state.deal.downAmt; });
+        bindNum('#in_downPct', v=> { state.deal.downPct = v; state.deal.downAmt = v*state.deal.price; state.deal.loanAmt = state.deal.price - state.deal.downAmt; });
+        bindNum('#in_downAmt', v=> { state.deal.downAmt = v; state.deal.downPct = state.deal.price? v/state.deal.price : 0; state.deal.loanAmt = state.deal.price - v; });
+        bindNum('#in_loanAmt', v=> { state.deal.loanAmt = v; });
+        bindNum('#in_rate', v=> { state.deal.rate = v; });
+        bindNum('#in_termYears', v=> { state.deal.termYears = v; });
+        bindNum('#in_closingCostPct', v=> { state.deal.closingCostPct = v; });
+        bindNum('#in_rehab', v=> { state.deal.rehab = v; });
+        bindNum('#in_vacancyRate', v=> { state.deal.vacancyRate = v; });
+        bindNum('#in_otherIncome', v=> { state.deal.otherIncome = v; });
+        bindNum('#in_saleCap', v=> { state.deal.saleCap = v; });
+        bindNum('#in_sellCostPct', v=> { state.deal.sellCostPct = v; });
+      }
+
+      if(state.dealTabs==='financing'){
+        container.querySelector('#addScenario').addEventListener('click', ()=>{
+          const id = Math.max(0, ...state.scenarios.map(s=> s.id)) + 1;
+          state.scenarios.push({id, name:`Scenario ${id}`, loanAmt: state.deal.loanAmt, rate: state.deal.rate, termYears: state.deal.termYears});
+          render();
+        });
+        container.querySelectorAll('tr[data-sid]').forEach(row=>{
+          const id = Number(row.getAttribute('data-sid'));
+          const s  = state.scenarios.find(x=> x.id===id);
+          if(!s) return;
+          const setVal = (cls, key, cast=Number) => { const el = row.querySelector('.' + cls); if(!el) return; el.addEventListener('input', e=>{ s[key] = cast===Number ? (Number(e.target.value)||0) : e.target.value; render(); }); };
+          setVal('sx_name','name', String);
+          setVal('sx_loan','loanAmt');
+          setVal('sx_rate','rate');
+          setVal('sx_term','termYears');
+          const applyBtn = row.querySelector('.sx_apply');
+          if(applyBtn){ applyBtn.addEventListener('click', ()=>{ state.deal.loanAmt = s.loanAmt; state.deal.rate = s.rate; state.deal.termYears = s.termYears; state.deal.downAmt = state.deal.price - s.loanAmt; state.deal.downPct = state.deal.price ? (state.deal.downAmt / state.deal.price) : state.deal.downPct; render(); }); }
+          const delBtn = row.querySelector('.sx_delete');
+          if(delBtn){ delBtn.addEventListener('click', ()=>{ state.scenarios = state.scenarios.filter(x=> x.id!==id); render(); }); }
+        });
+      }
+
+      if(state.dealTabs==='t12'){
+        container.querySelector('#t12Month').addEventListener('change', e=> { state.t12.startMonth = Number(e.target.value); render(); });
+        container.querySelector('#t12Year').addEventListener('change', e=> { state.t12.startYear = Number(e.target.value); render(); });
+        container.querySelector('#t12AddRow').addEventListener('click', ()=>{ state.t12.rows.push({id:Date.now(), category:'New Category', months:Array(12).fill(0)}); render(); });
+        container.querySelector('#t12Export').addEventListener('click', ()=>{ const period = buildPeriod(state.t12.startMonth, state.t12.startYear); const rows=[ ['Category', ...period.map(p=>p.label), 'Annual'] ]; state.t12.rows.forEach(r=>{ const total = r.months.reduce((a,b)=> a+(Number(b)||0),0); rows.push([r.category, ...r.months.map(v=> Number(v)||0), total]); }); const monthlyTotals = period.map((_,i)=> state.t12.rows.reduce((s,r)=> s + (Number(r.months[i])||0), 0)); const grandTotal = monthlyTotals.reduce((a,b)=> a+b, 0); rows.push(['TOTAL', ...monthlyTotals, grandTotal]); exportCSV(rows, `t12_${period[0].label.replace(/\s/g,'-')}_to_${period[11].label.replace(/\s/g,'-')}.csv`); });
+        container.querySelectorAll('tr[data-row]').forEach(tr=>{
+          const id = Number(tr.getAttribute('data-row'));
+          const row = state.t12.rows.find(r=> r.id===id);
+          if(!row) return;
+          const cat = tr.querySelector('.t12_cat');
+          cat.addEventListener('input', e=> { row.category = e.target.value; });
+          tr.querySelectorAll('.t12_val').forEach(inp=>{
+            const mi = Number(inp.getAttribute('data-mi'));
+            inp.addEventListener('input', e=>{ row.months[mi] = Number(e.target.value) || 0; render(); });
+          });
+          const del = tr.querySelector('.t12_delete');
+          del.addEventListener('click', ()=>{ state.t12.rows = state.t12.rows.filter(r=> r.id!==id); render(); });
+        });
+      }
+    }
+
+    function render(){
+      renderModuleTabs();
+      const root = document.getElementById('app');
+      root.innerHTML = '';
+      if(state.activeModule==='dashboard'){ const el = document.createElement('div'); renderDashboard(el); root.appendChild(el); }
+      if(state.activeModule==='finder'){ const el = document.createElement('div'); renderFinder(el); root.appendChild(el); }
+      if(state.activeModule==='dealanalyzer'){ const el = document.createElement('div'); renderDealAnalyzer(el); root.appendChild(el); }
+    }
+
+    render();
+  </script>
+</body>
+</html>
