@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>GroLinx • Static Test</title>
+  <style>
+    :root{ --primary:#133463; --muted:#64748b; --bg:#f8fafc }
+    html,body{height:100%}
+    body{margin:0; font-family:system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:#0f172a}
+    #brandheader{background:var(--primary); color:#fff; padding:22px 16px}
+    #brandheader .row{display:flex; gap:12px; align-items:center}
+    .logo{width:44px;height:44px;border-radius:10px;background:#ffffff22; display:flex;align-items:center;justify-content:center;font-weight:900}
+    main{padding:24px}
+    .card{background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:16px}
+    footer{padding:16px; text-align:center; color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div id='brandheader'>
+    <div class='row'>
+      <div class='logo'>G</div>
+      <div>
+        <div style='font-weight:900;font-size:20px'>GroLinx Static Test</div>
+        <div style='opacity:.9;font-size:13px'>v0.0.1-static</div>
+      </div>
+    </div>
+  </div>
+  <main>
+    <div class='card'>
+      <h2 style='margin:0 0 8px 0'>Static Page Loaded</h2>
+      <p class='muted' style='margin:0'>If you can read this, Netlify is serving static HTML correctly. There is no JavaScript on this page.</p>
+    </div>
+  </main>
+  <footer>GroLinx • Static Test • v0.0.1-static</footer>
+</body>
+</html>
