@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GroLinx REI — Extended</title>
+  <style>
+    :root{ --primary:#0f4c81; --bg:#f1f5f9; --panel:#ffffff; --muted:#64748b; --border:#e5e7eb }
+    [data-theme='dark']{ --primary:#60a5fa; --bg:#0b1220; --panel:#071029; --muted:#9aa6b2; --border:#122034 }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Helvetica,Arial;background:var(--bg);color:var(--text, #0f172a)}
+    #brandheader{background:var(--primary);color:#fff;padding:16px}
+    .row{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;font-weight:800}
+    #tabsbar{background:var(--panel);padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+    .pill{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:transparent;cursor:pointer}
+    .pill.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    main{padding:16px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px}
+    .muted{color:var(--muted)}
+    .grid-2{display:grid;grid-template-columns:1fr 320px;gap:12px}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .field{margin-bottom:8px}
+    .field input, .field select{width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;background:transparent}
+    .btn{padding:8px 12px;border-radius:8px;border:none;background:var(--primary);color:#fff;cursor:pointer}
+    .btn-ghost{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;cursor:pointer}
+    footer{padding:12px;text-align:center;color:var(--muted)}
+    .small{font-size:12px}
+    .muted-small{color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div id="brandheader">
+    <div class="row">
+      <div class="logo">G</div>
+      <div>
+        <div style="font-weight:900;font-size:18px">GroLinx Real Estate Investment Platform</div>
+        <div class="muted small">v1.3.8 • External App Build</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <div id="themeToggle" class="btn-ghost small">Toggle Theme</div>
+        <div id="planLabel" class="muted-small">Plan: Basic</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabsbar"></div>
+  <main>
+    <div id="app"></div>
+  </main>
+
+  <footer>GroLinx • v1.3.8 • Built for Netlify</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
