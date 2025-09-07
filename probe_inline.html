@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GroLinx Probe - Inline Script</title>
+  <style>body{font-family:system-ui,Arial;background:#f8fafc;color:#0f172a;padding:24px} .card{background:#fff;border:1px solid #e5e7eb;padding:16px;border-radius:8px}</style>
+</head>
+<body>
+  <div class="card">
+    <h2>Inline Script Probe</h2>
+    <p id="status">Starting probe...</p>
+  </div>
+
+  <script>
+    // Simple, safe inline script (no template literals, no unusual characters)
+    try {
+      console.log('INLINE PROBE: script running');
+      document.getElementById('status').textContent = 'Inline script executed successfully.';
+    } catch (e) {
+      document.getElementById('status').textContent = 'Inline script failed: ' + (e && e.message ? e.message : String(e));
+      console.error('INLINE PROBE ERROR', e);
+    }
+  </script>
+</body>
+</html>
