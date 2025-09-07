@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GroLinx REI — External App Build</title>
+  <style>
+    :root{ --primary:#133463; --tabsbar:#e2e8f0; --muted:#64748b; --panel:#fff; --bg:#f1f5f9; --border:#e5e7eb }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,Segoe UI,Helvetica,Arial;background:var(--bg);color:#0f172a}
+    #brandheader{background:var(--primary);color:#fff;padding:18px}
+    .row{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:10px;background:#ffffff22;display:flex;align-items:center;justify-content:center;font-weight:900}
+    #tabsbar{background:var(--tabsbar);padding:10px 12px}
+    .pill{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer}
+    .pill.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+    main{padding:16px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px}
+    .muted{color:var(--muted)}
+    footer{padding:12px;text-align:center;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div id="brandheader">
+    <div class="row">
+      <div class="logo">G</div>
+      <div>
+        <div style="font-weight:900;font-size:18px">GroLinx Real Estate Investment Platform</div>
+        <div class="muted" style="font-size:13px">v1.3.7-external</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabsbar"></div>
+  <main>
+    <div id="app"></div>
+  </main>
+
+  <footer>GroLinx • v1.3.7-external</footer>
+
+  <!-- Load external app logic -->
+  <script src="app.js"></script>
+</body>
+</html>
