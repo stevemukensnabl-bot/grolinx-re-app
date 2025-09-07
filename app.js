@@ -1,186 +1,283 @@
-/* app.js — GroLinx polished UX build (UTF-8, no BOM) */
-(function(){
-  'use strict';
-  console.log('GroLinx v1.4.0 starting', new Date().toISOString());
+/* app.js - v1.4.1 - Cleaned and sanitized build */
+function fmtMoney(v, digits) { digits = digits || 0; try { return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: digits }).format(Number(v || 0)); } catch (e) { return "$0"; } }
+function fmtPct(p, digits) { digits = digits || 2; if (!isFinite(p)) return "—"; return (Number(p || 0) * 100).toFixed(digits) + "%"; }
+function uuid() { return Math.floor(performance.now() + Math.random() * 1e6); }
+function safe(v, fallback) { fallback = fallback || ""; return (typeof v === "undefined" || v === null) ? fallback : v; }
 
-  // Helpers
-  function money(n,d){ d=(typeof d==='number')?d:0; if(n==null||isNaN(n)) return '-'; return '$'+Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}); }
-  function pct(n){ if(n==null||isNaN(n)) return '-'; return (Number(n)*100).toFixed(2)+'%'; }
-  function monthlyPI(loan, annualRate, years){ if(!loan||!years) return 0; var r=(annualRate||0)/12; var n=years*12; if(r===0) return loan/n; return loan*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1); }
-  var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  function buildPeriod(startMonth, startYear){ var labels=[], m=startMonth, y=startYear; for(var i=0;i<12;i++){ labels.push({m:m,y:y,label:MONTHS[m]+' '+y}); m=(m+1)%12; if(m===0) y+=1; } return labels; }
+const State = {
+  tag: "v1.4.1",
+  savedName: null,
+  deal: {
+    meta: { address: "", city: "", state: "", price: 1500000, units: 14, yearBuilt: 1995, downPaymentPct: 0.35, repairBudget: 50000, closingCostsPct: 0.03, acquisitionCosts: 50000, arv: 0, reservesMonthly: 290, sqft: 7472, type: "Multifamily" },
+    rents: { proformaAnnualGross: 175200, vacancyPct: 0.06, annualRentGrowthPct: 0.03 },
+    expenses: { annualExpensesProforma: 50872.16, expenseGrowthPct: 0.05 },
+    renovationSchedule: [],
+    returnAssumptions: { saleCapRate: 0.06, saleYear: 5, sellingCostsPct: 0.05 }
+  },
+  apod: { incomes: [{ label: "Unit Income", amount: 175200 }], expenses: [ { label: "Taxes", amount: 7100, pctOfEGI: false }, { label: "Insurance", amount: 6585, pctOfEGI: false }, { label: "Maint/Repair", amount: 9760, pctOfEGI: false }, { label: "Utilities", amount: 7299, pctOfEGI: false }, { label: "Management", amount: 9372.552, pctOfEGI: false }, { label: "Reserves", amount: 3500, pctOfEGI: false } ] },
+  loanScenarios: [{ id: 1, name: "Base Loan", loanAmount: 975000, interestRate: 0.065, termYears: 30, amortizationYears: 30, interestOnlyYears: 0 }]
+};
 
-  // LS keys
-  var LS_THEME='grolinx_theme', LS_ACTIVE='grolinx_active', LS_PROFILE='grolinx_profile';
+(function(){ try { const s = localStorage.getItem("rei_state_v1"); if (s) Object.assign(State, JSON.parse(s)); } catch(e){} })();
+function persist(){ try { localStorage.setItem("rei_state_v1", JSON.stringify(State)); } catch(e){} }
 
-  // State
-  var state={
-    activeModule: localStorage.getItem(LS_ACTIVE)||'dealanalyzer',
-    modules:[{id:'dashboard',label:'Dashboard'},{id:'finder',label:'Finder'},{id:'dealanalyzer',label:'Deal Analyzer'}],
-    isEnterprise:false,
-    profile: JSON.parse(localStorage.getItem(LS_PROFILE)||JSON.stringify({name:'GroLinx User',email:'user@grolinx.com',commitment:250000})),
-    investors:[{id:1,name:'Acme Capital',contact:'invest@acme.com',committed:2000000,deployed:1200000},{id:2,name:'BluePeak LP',contact:'team@bluepeak.com',committed:1000000,deployed:450000}],
-    deal:{ name:'123 Main St', market:'Anytown, USA', price:1500000, units:14, downPct:0.35, downAmt:525000, loanAmt:975000, rate:0.065, termYears:30, closingCostPct:0.03, rehab:50000, vacancyRate:0.06, otherIncome:0, saleCap:0.06, sellCostPct:0.05 },
-    scenarios:[{id:1,name:'Base (65% LTV, 6.5% 30yr)',loanAmt:975000,rate:0.065,termYears:30},{id:2,name:'Alt (70% LTV, 6.75% 30yr)',loanAmt:1050000,rate:0.0675,termYears:30}],
-    t12:{ startMonth:(new Date()).getMonth(), startYear:(new Date()).getFullYear()-1, rows:[{id:1,category:'Taxes',months:Array(12).fill(7100/12)},{id:2,category:'Insurance',months:Array(12).fill(6585/12)},{id:3,category:'Maintenance',months:Array(12).fill(9760/12)}] }
-  };
+function monthlyPayment(loanAmount, annualRate, amortYears){
+  if(!loanAmount || !annualRate || !amortYears) return 0;
+  const r = annualRate/12;
+  const n = amortYears*12;
+  if(r === 0) return loanAmount / n;
+  return loanAmount * r / (1 - Math.pow(1 + r, -n));
+}
+function interestOnlyPayment(loanAmount, annualRate){ return (loanAmount * (annualRate || 0)) / 12; }
+function yearlyDebtService(loan){ 
+  if(!loan) return 0; 
+  if((loan.interestOnlyYears || 0) > 0) return interestOnlyPayment(loan.loanAmount||0, loan.interestRate||0) * 12; 
+  const m = monthlyPayment(loan.loanAmount||0, loan.interestRate||0, loan.amortizationYears||loan.termYears||30); 
+  return m * 12; 
+}
 
-  // Theme
-  function applyTheme(t){ if(t==='dark') document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); localStorage.setItem(LS_THEME,t); }
-  applyTheme(localStorage.getItem(LS_THEME)||'light');
+function computeNOI(){
+  const inc = (State.apod.incomes||[]).reduce((s,i)=>s + Number(i.amount||0),0);
+  const expBase = (State.apod.expenses||[]).reduce((s,e)=> s + (e.pctOfEGI ? 0 : Number(e.amount||0)), 0);
+  const pctBased = (State.apod.expenses||[]).reduce((s,e)=> s + (e.pctOfEGI ? (Number(e.amount||0)/100)*inc : 0), 0);
+  const totalExp = expBase + pctBased;
+  const noi = inc - totalExp;
+  return {inc, totalExp, noi};
+}
+function computeTopKPIs(){
+  const price = Number(State.deal.meta.price || 0);
+  const {inc, totalExp, noi} = computeNOI();
+  const cap = price ? (noi / price) : 0;
+  const loan = (State.loanScenarios||[])[0];
+  const ds = loan ? yearlyDebtService(loan) : 0;
+  const dscr = ds ? (noi / ds) : 0;
+  const equity = price * (Number(State.deal.meta.downPaymentPct||0));
+  const cashFlow = noi - ds;
+  const coc = equity ? (cashFlow / equity) : 0;
+  const grm = (inc && price) ? (price / inc) : 0;
+  return {price, inc, totalExp, noi, cap, ds, dscr, equity, cashFlow, coc, grm};
+}
 
-  // Utils
-  function clear(el){ while(el&&el.firstChild) el.removeChild(el.firstChild); }
-  function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-  function downloadFile(name,content,type){ var blob=new Blob([content],{type:type}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1200); }
+function updateTopTiles(){
+  const root = document.getElementById("topTiles"); if(!root) return;
+  const k = computeTopKPIs(); root.innerHTML = "";
+  const tiles = [ {label:"Price", value: fmtMoney(k.price)}, {label:"NOI", value: fmtMoney(k.noi)}, {label:"Cap Rate", value: fmtPct(k.cap)}, {label:"Debt Service (Y1)", value: fmtMoney(k.ds)}, {label:"DSCR", value: k.dscr ? k.dscr.toFixed(2) : "—"}, {label:"CoC", value: fmtPct(k.coc)}, {label:"GRM", value: k.grm ? k.grm.toFixed(2) : "—"}, {label:"Equity", value: fmtMoney(k.equity)}, {label:"Cash Flow (Y1)", value: fmtMoney(k.cashFlow)} ];
+  tiles.forEach(function(t){ 
+    const el = document.createElement("div"); 
+    el.className = "tile"; 
+    el.innerHTML = "<div class=\"label\">"+t.label+"</div><div class=\"value\">"+t.value+"</div>"; 
+    root.appendChild(el); 
+  });
+}
 
-  // Tabs
-  function renderModuleTabs(){ var row=document.getElementById('tabsRow'); if(!row) return; clear(row); state.modules.forEach(function(m){ var b=document.createElement('button'); b.className='pill'+(state.activeModule===m.id?' active':''); b.textContent=m.label; b.addEventListener('click',function(){ state.activeModule=m.id; localStorage.setItem(LS_ACTIVE,m.id); render(); }); row.appendChild(b); }); var plan=document.getElementById('planLabel'); if(plan) plan.textContent=(state.isEnterprise?'Plan: Enterprise':'Plan: Basic'); }
+function FinderRender(container){
+  const sample = [ 
+    {id:101,name:"Maple Court",city:"Portland",state:"OR",type:"Multifamily",units:16,price:1850000,cap:0.055,yearBuilt:1998}, 
+    {id:102,name:"Cedar Flats",city:"Austin",state:"TX",type:"Multifamily",units:12,price:1420000,cap:0.061,yearBuilt:2005}, 
+    {id:103,name:"Riverside Retail",city:"Boise",state:"ID",type:"Retail",units:4,price:950000,cap:0.068,yearBuilt:2010} 
+  ];
+  container.innerHTML = "";
+  const card = document.createElement("div"); card.className = "card";
+  card.innerHTML = "<h3>Investment Finder</h3><div class=\"small\">Sample properties (click Analyze)</div><div id=\"fResults\"></div>";
+  container.appendChild(card);
+  const fResults = card.querySelector("#fResults");
+  sample.forEach(function(p){
+    const row = document.createElement("div"); 
+    row.style = "border:1px solid var(--border);padding:8px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;";
+    row.innerHTML = "<div><div style=\"font-weight:700\">"+p.name+"</div><div class=\"small\">"+p.city+", "+p.state+" • "+p.units+" units • "+p.type+"</div><div class=\"small\">Price "+fmtMoney(p.price)+" • Cap "+fmtPct(p.cap)+"</div></div><div style=\"display:flex;flex-direction:column;gap:6px\"><button class=\"btn-ghost\" data-act=\"analyze\" data-id=\""+p.id+"\">Analyze</button><button class=\"btn\" data-act=\"analyzeSave\" data-id=\""+p.id+"\">Analyze & Save</button></div>";
+    fResults.appendChild(row);
+  });
 
-  // Dashboard (clean two-column)
-  function renderDashboard(root){
-    var grid=document.createElement('div'); grid.className='grid-2';
+  fResults.addEventListener("click", function(e){ 
+    const btn = e.target.closest("button"); 
+    if(!btn) return; 
+    const act = btn.getAttribute("data-act"); 
+    const id = Number(btn.getAttribute("data-id")); 
+    const prop = sample.find(function(x){return x.id === id;}); 
+    if(!prop) return; 
+    State.deal.meta.address = prop.name; 
+    State.deal.meta.city = prop.city; 
+    State.deal.meta.state = prop.state; 
+    State.deal.meta.price = prop.price; 
+    State.deal.meta.units = prop.units; 
+    State.deal.rents.proformaAnnualGross = Math.round((prop.price*(prop.cap||0.06)) + 50000); 
+    persist(); 
+    renderTabsAndLoad("deal"); 
+    if(act === "analyzeSave"){ 
+      State.savedName = prop.name; 
+      persist(); 
+      alert("Saved (preview)."); 
+    } 
+  });
+}
 
-    var left=document.createElement('div');
-    var profile=document.createElement('div'); profile.className='card';
-    profile.innerHTML='<h3>Profile</h3>'+
-      '<div class="form-grid">'+
-      '<div class="field"><label>Name</label><input id="pName" class="input" value="'+escapeHtml(state.profile.name)+'"></div>'+
-      '<div class="field"><label>Email</label><input id="pEmail" class="input" value="'+escapeHtml(state.profile.email)+'"></div>'+
-      '<div class="field"><label>Commitment</label><input id="pCommit" class="input" type="number" value="'+(state.profile.commitment||0)+'"></div>'+
-      '<div class="field"><label>Plan</label><input disabled class="input" value="'+(state.isEnterprise?'Enterprise':'Basic')+'"></div>'+
-      '</div>'+ 
-      '<div style="margin-top:10px;display:flex;gap:8px"><button id="saveProfile" class="btn">Save</button><button id="togglePlan" class="btn-ghost">Toggle Plan</button></div>';
-    left.appendChild(profile);
+function DealAnalyzerView(){
+  const root = document.createElement("div");
+  const header = document.createElement("div"); 
+  header.className = "card"; 
+  header.innerHTML = "<h3>Deal Analyzer</h3>";
+  root.appendChild(header);
 
-    var right=document.createElement('div');
-    var inv=document.createElement('div'); inv.className='card';
-    var list='<h3>Investors</h3>';
-    state.investors.forEach(function(it){ list+='<div style="padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">'+
-      '<div style="font-weight:700">'+escapeHtml(it.name)+'</div>'+ 
-      '<div class="muted" style="font-size:12px">'+escapeHtml(it.contact)+'</div>'+ 
-      '<div class="muted" style="font-size:12px">Committed: '+money(it.committed)+' • Deployed: '+money(it.deployed)+'</div>'+ 
-      '</div>'; });
-    list+='<div style="margin-top:10px;font-weight:700">Add Investor</div>'+
-      '<div class="form-grid" style="margin-top:6px">'+
-      '<input id="newInvName" class="input" placeholder="Name">'+
-      '<input id="newInvContact" class="input" placeholder="Contact">'+
-      '<input id="newInvCommitted" class="input" type="number" placeholder="Committed">'+
-      '<button id="addInvestorBtn" class="btn-ghost">Add</button>'+
-      '</div>';
-    inv.innerHTML=list;
-    right.appendChild(inv);
+  const sections = document.createElement("div"); 
+  sections.className = "card";
+  sections.innerHTML = "<h4>Sections</h4><div style=\"display:flex;gap:8px\"><button id=\"sInputs\" class=\"btn-ghost\">Inputs</button><button id=\"sAPOD\" class=\"btn-ghost\">APOD</button></div><div id=\"sectionContent\" style=\"margin-top:12px\"></div>";
+  root.appendChild(sections);
 
-    grid.appendChild(left); grid.appendChild(right); root.appendChild(grid);
-
-    // Events
-    var save=document.getElementById('saveProfile'); if(save){ save.addEventListener('click',function(){ state.profile.name=document.getElementById('pName').value||''; state.profile.email=document.getElementById('pEmail').value||''; state.profile.commitment=Number(document.getElementById('pCommit').value)||0; localStorage.setItem(LS_PROFILE,JSON.stringify(state.profile)); alert('Profile saved'); }); }
-    var tgl=document.getElementById('togglePlan'); if(tgl){ tgl.addEventListener('click',function(){ state.isEnterprise=!state.isEnterprise; render(); }); }
-    var add=document.getElementById('addInvestorBtn'); if(add){ add.addEventListener('click', function(){ var n=(document.getElementById('newInvName').value||'').trim(); if(!n) return alert('Enter name'); var c=(document.getElementById('newInvContact').value||'').trim(); var amt=Number(document.getElementById('newInvCommitted').value)||0; var id=Math.max.apply(null,[0].concat(state.investors.map(function(x){return x.id;})))+1; state.investors.push({id:id,name:n,contact:c,committed:amt,deployed:0}); render(); }); }
+  function renderInputs(){ 
+    const el = sections.querySelector("#sectionContent"); 
+    el.innerHTML = ""; 
+    const card = document.createElement("div"); 
+    card.className = "card"; 
+    const m = State.deal.meta; 
+    card.innerHTML = "<div class=\"form-grid\"><div class=\"field\"><label class=\"small\">Address</label><input name=\"address\" class=\"input\" value=\""+safe(m.address)+"\" /></div><div class=\"field\"><label class=\"small\">Price</label><input name=\"price\" class=\"input\" type=\"number\" value=\""+Number(m.price||0)+"\" /></div></div>"; 
+    el.appendChild(card);
+    card.querySelectorAll("input[name]").forEach(function(inp){ 
+      inp.addEventListener("change", function(){ 
+        const name = inp.name; 
+        const val = inp.type === "number" ? Number(inp.value||0) : inp.value; 
+        State.deal.meta[name] = val; 
+        persist(); 
+        updateTopTiles(); 
+      }); 
+    }); 
   }
 
-  // Deal Analyzer
-  function dealCalcs(){ var d=state.deal; var grossYr1=142440; var vacYr1=grossYr1*(d.vacancyRate||0); var egiYr1=grossYr1-vacYr1+(d.otherIncome||0); var t12TotalAnnual=state.t12.rows.reduce(function(s,r){return s+r.months.reduce(function(a,b){return a+(Number(b)||0);},0);},0); var pmt=monthlyPI(d.loanAmt,d.rate,d.termYears); var ads=pmt*12; var noi=egiYr1-t12TotalAnnual; var cf=noi-ads; var cap=d.price?(noi/d.price):0; var coc=d.downAmt?(cf/d.downAmt):0; return {grossYr1:grossYr1,vacYr1:vacYr1,egiYr1:egiYr1,t12TotalAnnual:t12TotalAnnual,pmt:pmt,ads:ads,noi:noi,cf:cf,cap:cap,coc:coc}; }
+  function renderAPOD(){ 
+    const el = sections.querySelector("#sectionContent"); 
+    el.innerHTML = ""; 
+    const card = document.createElement("div"); 
+    card.className = "card"; 
+    card.innerHTML = "<div id=\"apodReport\"></div><div style=\"margin-top:10px;display:flex;gap:8px\"><button id=\"exportAPODCSV\" class=\"btn-ghost\">Export CSV</button></div>"; 
+    el.appendChild(card);
 
-  function renderDealAnalyzer(root){
-    // Header card
-    var head=document.createElement('div'); head.className='card'; head.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center">'+
-      '<div><div style="font-weight:800;font-size:18px">'+escapeHtml(state.deal.name)+'</div><div class="muted" style="font-size:12px">'+escapeHtml(state.deal.market)+'</div></div>'+ 
-      '<div class="muted" style="font-size:12px">Units: '+(state.deal.units||'-')+'</div></div>';
-    root.appendChild(head);
+    function renderReport(){ 
+      const incTotal = (State.apod.incomes||[]).reduce(function(s,i){return s + Number(i.amount||0);},0); 
+      const expenseTotal = (State.apod.expenses||[]).reduce(function(s,e){ return s + (e.pctOfEGI ? ((Number(e.amount||0)/100)*incTotal) : Number(e.amount||0)); }, 0); 
+      const noi = incTotal - expenseTotal; 
+      const price = Number((State.deal.meta && State.deal.meta.price) || 0); 
+      const cap = price ? (noi/price) : 0; 
+      const loan = (State.loanScenarios||[])[0]; 
+      const ds = loan ? yearlyDebtService(loan) : 0; 
+      const cf = noi - ds; 
+      const equity = price * Number(State.deal.meta.downPaymentPct || 0); 
+      const coc = equity ? (cf / equity) : 0; 
+      const grm = price && incTotal ? (price / incTotal) : 0; 
+      const dcr = ds ? (noi / ds) : 0; 
+      const div = card.querySelector("#apodReport"); 
+      div.innerHTML = "<table><tbody>" + 
+        "<tr><td><strong>Price</strong></td><td class=\"num\">"+fmtMoney(price)+"</td></tr>" + 
+        "<tr><td><strong>Income Total (EGI)</strong></td><td class=\"num\">"+fmtMoney(incTotal)+"</td></tr>" + 
+        "<tr><td><strong>Operating Expenses</strong></td><td class=\"num\">"+fmtMoney(expenseTotal)+"</td></tr>" + 
+        "<tr><td><strong>NOI</strong></td><td class=\"num\">"+fmtMoney(noi)+"</td></tr>" + 
+        "<tr><td><strong>Cap Rate</strong></td><td class=\"num\">"+fmtPct(cap)+"</td></tr>" + 
+        "<tr><td><strong>Debt Service (Y1)</strong></td><td class=\"num\">"+fmtMoney(ds)+"</td></tr>" + 
+        "<tr><td><strong>Cash Flow (Y1)</strong></td><td class=\"num\">"+fmtMoney(cf)+"</td></tr>" + 
+        "<tr><td><strong>Cash-on-Cash (CoC)</strong></td><td class=\"num\">"+fmtPct(coc)+"</td></tr>" + 
+        "</tbody></table>"; 
+    }
+    renderReport();
 
-    var grid=document.createElement('div'); grid.className='grid-2';
-
-    // Left column
-    var left=document.createElement('div');
-
-    // Inputs card
-    var inp=document.createElement('div'); inp.className='card';
-    inp.innerHTML='<h3>Deal Inputs</h3>'+ 
-      '<div class="form-grid">'+
-      '<div class="field"><label>Purchase Price</label><input id="in_price" class="input" type="number" value="'+(state.deal.price||0)+'"></div>'+
-      '<div class="field"><label>Down %</label><input id="in_downPct" class="input" type="number" step="0.001" value="'+(state.deal.downPct||0.35)+'"></div>'+
-      '<div class="field"><label>Interest Rate (0-1)</label><input id="in_rate" class="input" type="number" step="0.0001" value="'+(state.deal.rate||0.065)+'"></div>'+
-      '<div class="field"><label>Term (years)</label><input id="in_term" class="input" type="number" value="'+(state.deal.termYears||30)+'"></div>'+
-      '<div class="field"><label>Vacancy Rate (0-1)</label><input id="in_vac" class="input" type="number" step="0.001" value="'+(state.deal.vacancyRate||0)+'"></div>'+
-      '<div class="field"><label>Other Income (annual)</label><input id="in_other" class="input" type="number" value="'+(state.deal.otherIncome||0)+'"></div>'+
-      '</div>'+ 
-      '<div style="margin-top:10px; display:flex; gap:8px"><button id="applyDealBtn" class="btn">Apply</button><button id="resetDealBtn" class="btn-ghost">Reset</button></div>';
-    left.appendChild(inp);
-
-    // Metrics tiles
-    var tiles=document.createElement('div'); tiles.className='tiles'; tiles.style.marginTop='12px';
-    var cal=dealCalcs();
-    tiles.innerHTML=
-      tile('Cap Rate', cal.cap? (cal.cap*100).toFixed(2)+'%':'-', rating(cal.cap, 0.055, 0.07))+
-      tile('NOI', money(cal.noi), rating(cal.noi, 60000, 90000))+
-      tile('Annual Debt', money(cal.ads), 'muted')+
-      tile('Cash Flow', money(cal.cf), rating(cal.cf, 0, 30000));
-    left.appendChild(tiles);
-
-    // Scenarios
-    var sc=document.createElement('div'); sc.className='card'; sc.style.marginTop='12px';
-    var shtml='<h3>Financing Scenarios</h3>';
-    state.scenarios.forEach(function(s){ shtml+= '<div style="padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px; display:flex; justify-content:space-between; gap:10px">'+
-      '<div><div style="font-weight:700">'+escapeHtml(s.name)+'</div><div class="muted" style="font-size:12px">Loan: '+money(s.loanAmt)+' • Rate: '+(s.rate*100).toFixed(2)+'% • Term: '+s.termYears+' yrs</div></div>'+ 
-      '<div><button class="btn-ghost applySc" data-sid="'+s.id+'">Apply</button></div></div>'; });
-    shtml+='<button id="addScenarioBtn" class="btn-ghost">+ Add Scenario</button>';
-    sc.innerHTML=shtml; left.appendChild(sc);
-
-    // Right column
-    var right=document.createElement('div');
-
-    // T12 card
-    var t12=document.createElement('div'); t12.className='card';
-    var period=buildPeriod(state.t12.startMonth, state.t12.startYear);
-    var t12h='<h3>T12</h3><div class="muted" style="font-size:12px">Start: '+period[0].label+'</div>';
-    t12h+='<div style="margin-top:8px"><table><thead><tr><th>Category</th><th class="num">Annual</th></tr></thead><tbody>';
-    state.t12.rows.forEach(function(row){ var total=row.months.reduce(function(a,b){return a+(Number(b)||0);},0); t12h+='<tr><td>'+escapeHtml(row.category)+'</td><td class="num">'+money(total)+'</td></tr>'; });
-    t12h+='</tbody></table></div><div style="margin-top:8px"><button id="exportT12" class="btn-ghost">Export CSV</button></div>';
-    t12.innerHTML=t12h; right.appendChild(t12);
-
-    // APOD card
-    var apod=document.createElement('div'); apod.className='card'; apod.style.marginTop='12px';
-    var ap=dealCalcs();
-    apod.innerHTML='<h3>APOD</h3>'+
-      '<div class="muted" style="font-size:12px">Year 1</div>'+ 
-      '<div style="margin-top:8px">GSI: <b>'+money(ap.grossYr1)+'</b></div>'+ 
-      '<div>NOI: <b>'+money(ap.noi)+'</b></div>'+ 
-      '<div>Cash Flow: <b>'+money(ap.cf)+'</b></div>';
-    right.appendChild(apod);
-
-    grid.appendChild(left); grid.appendChild(right); root.appendChild(grid);
-
-    // Bindings
-    var apply=document.getElementById('applyDealBtn'); if(apply){ apply.addEventListener('click',function(){
-      state.deal.price=Number(document.getElementById('in_price').value)||0;
-      state.deal.downPct=Number(document.getElementById('in_downPct').value)||0;
-      state.deal.downAmt=state.deal.price*state.deal.downPct;
-      state.deal.loanAmt=state.deal.price-state.deal.downAmt;
-      state.deal.rate=Number(document.getElementById('in_rate').value)||0;
-      state.deal.termYears=Number(document.getElementById('in_term').value)||30;
-      state.deal.vacancyRate=Number(document.getElementById('in_vac').value)||0;
-      state.deal.otherIncome=Number(document.getElementById('in_other').value)||0;
-      render();
-    }); }
-    var reset=document.getElementById('resetDealBtn'); if(reset){ reset.addEventListener('click',function(){ state.deal={ name:'123 Main St', market:'Anytown, USA', price:1500000, units:14, downPct:0.35, downAmt:525000, loanAmt:975000, rate:0.065, termYears:30, closingCostPct:0.03, rehab:50000, vacancyRate:0.06, otherIncome:0, saleCap:0.06, sellCostPct:0.05 }; render(); }); }
-    var btns=document.getElementsByClassName('applySc'); for(var j=0;j<btns.length;j++){ btns[j].addEventListener('click', function(ev){ var sid=Number(ev.target.getAttribute('data-sid')); var sc=state.scenarios.find(function(x){return x.id===sid;}); if(sc){ state.deal.loanAmt=sc.loanAmt; state.deal.rate=sc.rate; state.deal.termYears=sc.termYears; state.deal.downAmt=state.deal.price-state.deal.loanAmt; render(); } }); }
-    var exp=document.getElementById('exportT12'); if(exp){ exp.addEventListener('click', function(){ var rows=[['Category','Annual']]; state.t12.rows.forEach(function(r){ var total=r.months.reduce(function(a,b){return a+(Number(b)||0);},0); rows.push([r.category,total]); }); var csv=rows.map(function(r){ return r.map(function(c){ var s=String(c); if(s.indexOf(',')!==-1) s='"'+s.replace(/"/g,'""')+'"'; return s; }).join(','); }).join('\n'); downloadFile('t12_export.csv', csv, 'text/csv'); }); }
+    card.querySelector("#exportAPODCSV").addEventListener("click", function(){
+      const rows = [["Metric","Value"]];
+      const incTotal = (State.apod.incomes || []).reduce(function(s,i){ return s + Number(i.amount || 0); }, 0);
+      rows.push(["Income Total", incTotal]);
+      (State.apod.incomes || []).forEach(function(i) { rows.push([i.label, i.amount]); });
+      rows.push([]);
+      (State.apod.expenses || []).forEach(function(e) {
+        const val = e.pctOfEGI ? (String(e.amount) + "% of EGI") : e.amount;
+        rows.push([e.label, val]);
+      });
+      const csv = rows.map(function(r) { return r.map(function(c) { return "\"" + String(c).replace(/"/g, "\"") + "\""; }).join(","); }).join("\n");
+      const blob = new Blob([csv], {type: "text/csv"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); 
+      a.href = url; 
+      a.download = "apod.csv"; 
+      document.body.appendChild(a); 
+      a.click(); 
+      a.remove(); 
+      URL.revokeObjectURL(url);
+    });
   }
 
-  function tile(label, value, cls){ return '<div class="tile '+(cls||'')+'"><div class="label">'+label+'</div><div class="value">'+value+'</div></div>'; }
-  function rating(val, warnCut, okCut){ if(val==null||isNaN(val)) return 'muted'; if(val>=okCut) return 'ok'; if(val>=warnCut) return 'warn'; return 'bad'; }
+  sections.querySelector("#sInputs").addEventListener("click", renderInputs);
+  sections.querySelector("#sAPOD").addEventListener("click", renderAPOD);
+  renderInputs();
+  return root;
+}
 
-  // Finder (kept light)
-  function renderFinder(root){ var c=document.createElement('div'); c.className='card'; c.innerHTML='<h3>Finder</h3><div class="muted" style="font-size:12px">Search sample listings and open in Analyzer.</div><div style="margin-top:8px"><button id="openSample" class="btn">Open Sample Deal</button></div>'; root.appendChild(c); var b=document.getElementById('openSample'); if(b) b.addEventListener('click', function(){ state.deal={ name:'Sample 14-unit', market:'Orlando, FL', price:1500000, units:14, downPct:0.35, downAmt:525000, loanAmt:975000, rate:0.065, termYears:30, vacancyRate:0.06, otherIncome:0 }; state.activeModule='dealanalyzer'; localStorage.setItem(LS_ACTIVE,'dealanalyzer'); render(); }); }
+function DashboardView(){ 
+  const d = document.createElement("div"); 
+  d.className = "card"; 
+  d.innerHTML = "<h3>Investor Dashboard</h3><div class=\"small\">Saved Deal: "+safe(State.savedName,"(none)")+"</div>"; 
+  return d; 
+}
+function DocsView(){ 
+  const d = document.createElement("div"); 
+  d.className = "card"; 
+  d.innerHTML = "<h3>Docs & Exports</h3><div class=\"small\">CSV export available. XLSX/docx available in production builds.</div>"; 
+  return d; 
+}
 
-  // Render root
-  function render(){ try{ renderModuleTabs(); var root=document.getElementById('app'); if(!root) return; clear(root); if(state.activeModule==='dashboard') renderDashboard(root); else if(state.activeModule==='finder') renderFinder(root); else if(state.activeModule==='dealanalyzer') renderDealAnalyzer(root); else root.appendChild(document.createTextNode('Unknown module')); console.log('render completed; activeModule=', state.activeModule); }catch(err){ console.error('Render error', err); var r=document.getElementById('app'); if(r) r.innerHTML='<div class="card" style="border-color:#ef4444;background:#fff6f6;color:#7f1d1d">An error occurred during render. See console.</div>'; } }
+const TOP_TABS = [ 
+  {id:"dashboard", label:"Investor Dashboard"}, 
+  {id:"finder", label:"Investment Finder"}, 
+  {id:"deal", label:"Deal Analyzer"}, 
+  {id:"docs", label:"Docs & Exports"} 
+];
+const topTabsWrap = document.getElementById("tabsRow");
+const appRoot = document.getElementById("app");
+function renderTopTabs(activeId){ 
+  topTabsWrap.innerHTML = ""; 
+  TOP_TABS.forEach(function(t){
+    const b = document.createElement("button"); 
+    b.className = "pill" + (t.id === activeId ? " active" : ""); 
+    b.textContent = t.label; 
+    b.addEventListener("click", function(){ 
+      renderTopTabs(t.id); 
+      renderTabsAndLoad(t.id); 
+    }); 
+    topTabsWrap.appendChild(b); 
+  }); 
+}
+function getViewById(id){ 
+  if(id === "dashboard") return DashboardView(); 
+  if(id === "finder"){ 
+    const node = document.createElement("div"); 
+    FinderRender(node); 
+    return node; 
+  } 
+  if(id === "deal") return DealAnalyzerView(); 
+  if(id === "docs") return DocsView(); 
+  return DashboardView(); 
+}
+function renderTabsAndLoad(activeId){ 
+  renderTopTabs(activeId); 
+  appRoot.innerHTML = ""; 
+  appRoot.appendChild(getViewById(activeId)); 
+  updateTopTiles(); 
+}
 
-  // Theme toggle
-  var themeBtn=document.getElementById('themeToggle'); if(themeBtn){ themeBtn.addEventListener('click', function(){ var cur=localStorage.getItem(LS_THEME)||'light'; var next=(cur==='light')?'dark':'light'; applyTheme(next); }); }
-
-  // Init
-  try{ render(); }catch(e){ console.error('Startup error', e); }
-
+(function(){ 
+  const btn = document.getElementById("themeToggle"); 
+  const initial = localStorage.getItem("rei_theme") || "light"; 
+  document.documentElement.setAttribute("data-theme", initial); 
+  function updateBtn(){ 
+    const cur = document.documentElement.getAttribute("data-theme") || "light"; 
+    btn.style.color = cur === "light" ? "#0b2138" : "#ffffff"; 
+    btn.style.borderColor = cur === "light" ? "#d1e3f6" : "#ffffff"; 
+    btn.textContent = cur === "light" ? "Switch to Dark" : "Switch to Light"; 
+  } 
+  updateBtn(); 
+  btn.addEventListener("click", function(){ 
+    const cur = document.documentElement.getAttribute("data-theme") || "light"; 
+    const n = cur === "light" ? "dark" : "light"; 
+    document.documentElement.setAttribute("data-theme", n); 
+    localStorage.setItem("rei_theme", n); 
+    updateBtn(); 
+  }); 
 })();
+
+renderTabsAndLoad("finder");
+updateTopTiles();
+window.renderTabsAndLoad = renderTabsAndLoad;
