@@ -1,186 +1,61 @@
-/* app.js — GroLinx polished UX build (UTF-8, no BOM) */
 (function(){
-  'use strict';
-  console.log('GroLinx v1.4.0 starting', new Date().toISOString());
+  function el(tag, cls){ var n=document.createElement(tag); if(cls) n.className=cls; return n; }
+  function txt(t){ return document.createTextNode(t); }
+  function showToast(msg, timeout){ var t=document.getElementById('toast'); if(!t) return; t.textContent=msg; t.style.display='block'; clearTimeout(t._tm); t._tm=setTimeout(function(){ t.style.display='none'; }, timeout||2500); }
+  function fmtMoney(v){ try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(Number(v||0)); }catch(e){return '$0'} }
+  function fmtPct(v){ if(!isFinite(v)) return '—'; return (Number(v||0)*100).toFixed(2)+'%'; }
 
-  // Helpers
-  function money(n,d){ d=(typeof d==='number')?d:0; if(n==null||isNaN(n)) return '-'; return '$'+Number(n).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}); }
-  function pct(n){ if(n==null||isNaN(n)) return '-'; return (Number(n)*100).toFixed(2)+'%'; }
-  function monthlyPI(loan, annualRate, years){ if(!loan||!years) return 0; var r=(annualRate||0)/12; var n=years*12; if(r===0) return loan/n; return loan*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1); }
-  var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  function buildPeriod(startMonth, startYear){ var labels=[], m=startMonth, y=startYear; for(var i=0;i<12;i++){ labels.push({m:m,y:y,label:MONTHS[m]+' '+y}); m=(m+1)%12; if(m===0) y+=1; } return labels; }
+  var State = { tag:'v1.15', savedName:null, deal:{ meta:{price:1500000,units:14,downPaymentPct:0.35,address:''}}, apod:{ incomes:[{label:'Unit Income',amount:175200}], expenses:[{label:'Taxes',amount:7100,pctOfEGI:false},{label:'Insurance',amount:6585,pctOfEGI:false}] }, loanScenarios:[{id:1,loanAmount:975000,interestRate:0.065,amortizationYears:30}] };
+  try{ var s = localStorage.getItem('grolinx_state_v1'); if(s) State = Object.assign(State, JSON.parse(s)); }catch(e){}
+  function persist(){ try{ localStorage.setItem('grolinx_state_v1', JSON.stringify(State)); }catch(e){} }
 
-  // LS keys
-  var LS_THEME='grolinx_theme', LS_ACTIVE='grolinx_active', LS_PROFILE='grolinx_profile';
+  function monthlyPayment(loanAmount,annualRate,amortYears){ if(!loanAmount||!amortYears) return 0; var r=(annualRate||0)/12; var n=amortYears*12; if(r===0) return loanAmount/n; return loanAmount * r / (1 - Math.pow(1+r,-n)); }
+  function yearlyDebtService(loan){ if(!loan) return 0; var m = monthlyPayment(loan.loanAmount||0, loan.interestRate||0, loan.amortizationYears||30); return m*12; }
+  function computeNOI(){ var inc = (State.apod.incomes||[]).reduce(function(s,i){return s + Number(i.amount||0)},0); var exp = (State.apod.expenses||[]).reduce(function(s,e){ return s + (e.pctOfEGI ? (Number(e.amount||0)/100)*inc : Number(e.amount||0)); },0); return {inc:inc,expenses:exp,noi: inc-exp}; }
+  function computeTopKPIs(){ var price = Number(State.deal.meta.price||0); var k = computeNOI(); var loan = (State.loanScenarios||[])[0]; var ds = loan ? yearlyDebtService(loan) : 0; var equity = price * (Number(State.deal.meta.downPaymentPct||0)); var cashFlow = k.noi - ds; return {price:price,noi:k.noi,inc:k.inc,expenses:k.expenses,cap: price? k.noi/price:0,ds:ds,coc: equity? cashFlow/equity:0,grm:k.inc? price/k.inc:0,equity:equity,cashFlow:cashFlow}; }
 
-  // State
-  var state={
-    activeModule: localStorage.getItem(LS_ACTIVE)||'dealanalyzer',
-    modules:[{id:'dashboard',label:'Dashboard'},{id:'finder',label:'Finder'},{id:'dealanalyzer',label:'Deal Analyzer'}],
-    isEnterprise:false,
-    profile: JSON.parse(localStorage.getItem(LS_PROFILE)||JSON.stringify({name:'GroLinx User',email:'user@grolinx.com',commitment:250000})),
-    investors:[{id:1,name:'Acme Capital',contact:'invest@acme.com',committed:2000000,deployed:1200000},{id:2,name:'BluePeak LP',contact:'team@bluepeak.com',committed:1000000,deployed:450000}],
-    deal:{ name:'123 Main St', market:'Anytown, USA', price:1500000, units:14, downPct:0.35, downAmt:525000, loanAmt:975000, rate:0.065, termYears:30, closingCostPct:0.03, rehab:50000, vacancyRate:0.06, otherIncome:0, saleCap:0.06, sellCostPct:0.05 },
-    scenarios:[{id:1,name:'Base (65% LTV, 6.5% 30yr)',loanAmt:975000,rate:0.065,termYears:30},{id:2,name:'Alt (70% LTV, 6.75% 30yr)',loanAmt:1050000,rate:0.0675,termYears:30}],
-    t12:{ startMonth:(new Date()).getMonth(), startYear:(new Date()).getFullYear()-1, rows:[{id:1,category:'Taxes',months:Array(12).fill(7100/12)},{id:2,category:'Insurance',months:Array(12).fill(6585/12)},{id:3,category:'Maintenance',months:Array(12).fill(9760/12)}] }
-  };
+  var inModuleContent = false; var currentDealTab = 'inputs'; var currentModule = 'hub';
 
-  // Theme
-  function applyTheme(t){ if(t==='dark') document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); localStorage.setItem(LS_THEME,t); }
-  applyTheme(localStorage.getItem(LS_THEME)||'light');
+  function updateTopTiles(){ var root=document.getElementById('topTiles'); if(!root) return; if(!inModuleContent || currentModule!=='deal' || (currentDealTab!=='inputs' && currentDealTab!=='financing' && currentDealTab!=='t12' && currentDealTab!=='apod')){ root.style.display='none'; return; } root.style.display='grid'; root.innerHTML=''; var k=computeTopKPIs(); var list=[ ['NOI', fmtMoney(k.noi)], ['Cap Rate', fmtPct(k.cap)], ['CoC', fmtPct(k.coc)], ['GRM', k.grm ? k.grm.toFixed(2) : '—'], ['Cash Flow (Y1)', fmtMoney(k.cashFlow)] ]; list.forEach(function(it){ var t=el('div','tile'); var lbl=el('div','label'); lbl.appendChild(txt(it[0])); var val=el('div','value'); val.appendChild(txt(it[1])); t.appendChild(lbl); t.appendChild(val); root.appendChild(t); }); }
 
-  // Utils
-  function clear(el){ while(el&&el.firstChild) el.removeChild(el.firstChild); }
-  function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-  function downloadFile(name,content,type){ var blob=new Blob([content],{type:type}); var url=URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download=name; a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1200); }
+  var MODULE_SUBTILES = { dashboard:[{id:'savedDeals',title:'Saved Deals',desc:'View and manage saved deals'},{id:'portfolio',title:'Portfolio Summary',desc:'Summary of holdings and performance'},{id:'alerts',title:'Alerts',desc:'Custom alerts & tasks'}], finder:[{id:'search',title:'Search Properties',desc:'Filter and browse listings'},{id:'map',title:'Map View',desc:'Map-based search & heatmaps'},{id:'savedFilters',title:'Saved Filters',desc:'Manage saved searches'}], deal:[{id:'inputs',title:'Inputs',desc:'Edit property inputs'},{id:'financing',title:'Financing',desc:'Compare loan scenarios'},{id:'t12',title:'T12',desc:'Monthly T12 cashflow editor'},{id:'apod',title:'APOD',desc:'Income & expense lineup'}], docs:[{id:'exports',title:'Exports',desc:'Export CSV, XLSX & templates'},{id:'loi',title:'LOIs / Templates',desc:'Generate LOIs and templates'},{id:'sign',title:'Signatures',desc:'eSign & workflows (stub)'}] };
+  var moduleTitleMap = { hub:'Module Hub', dashboard:'Investor Dashboard', finder:'Investment Finder', deal:'Deal Analyzer', docs:'Docs & Exports' };
 
-  // Tabs
-  function renderModuleTabs(){ var row=document.getElementById('tabsRow'); if(!row) return; clear(row); state.modules.forEach(function(m){ var b=document.createElement('button'); b.className='pill'+(state.activeModule===m.id?' active':''); b.textContent=m.label; b.addEventListener('click',function(){ state.activeModule=m.id; localStorage.setItem(LS_ACTIVE,m.id); render(); }); row.appendChild(b); }); var plan=document.getElementById('planLabel'); if(plan) plan.textContent=(state.isEnterprise?'Plan: Enterprise':'Plan: Basic'); }
+  function renderModuleTilesScreen(moduleId){ var list = MODULE_SUBTILES[moduleId] || []; var wrap = el('div'); wrap.className = 'card'; var title = el('h3'); title.appendChild(txt(moduleTitleMap[moduleId] || 'Module')); wrap.appendChild(title); var sub = el('div'); sub.className = 'module-tiles'; if(!list.length){ var p = el('div'); p.className='muted'; p.appendChild(txt('No sub-tiles defined for this module.')); sub.appendChild(p); } else { list.forEach(function(it){ var t = el('div','module-tile'); var h = el('h5'); h.appendChild(txt(it.title)); var p = el('div'); p.className = 'muted'; p.appendChild(txt(it.desc)); t.appendChild(h); t.appendChild(p); t.addEventListener('click', function(){ enterModuleContent(moduleId, it.id); }); sub.appendChild(t); }); } wrap.appendChild(sub); return wrap; }
 
-  // Dashboard (clean two-column)
-  function renderDashboard(root){
-    var grid=document.createElement('div'); grid.className='grid-2';
+  function FinderRender(container){ if(!container) return; container.innerHTML=''; var card=el('div','card'); var h=el('h3'); h.appendChild(txt('Investment Finder')); card.appendChild(h); var form=el('form'); form.style.marginBottom='12px'; var fdType = el('div','field'); var lbType = el('label'); lbType.appendChild(txt('Property Type')); var sel = el('select'); sel.name = 'propertyType'; sel.className = 'input'; sel.multiple = true; ['Multifamily','Retail','Office','Mixed-Use','Industrial','Land'].forEach(function(o){ var opt = el('option'); opt.value = o; opt.textContent = o; sel.appendChild(opt); }); fdType.appendChild(lbType); fdType.appendChild(sel); form.appendChild(fdType); var fdUnitsMin = el('div','field'); var lbUM = el('label'); lbUM.appendChild(txt('Min Units')); var inUM = el('input'); inUM.name = 'minUnits'; inUM.type = 'number'; inUM.className = 'input'; fdUnitsMin.appendChild(lbUM); fdUnitsMin.appendChild(inUM); fdUnitsMin.style.display = 'none'; form.appendChild(fdUnitsMin); var fdUnitsMax = el('div','field'); var lbUX = el('label'); lbUX.appendChild(txt('Max Units')); var inUX = el('input'); inUX.name = 'maxUnits'; inUX.type = 'number'; inUX.className = 'input'; fdUnitsMax.appendChild(lbUX); fdUnitsMax.appendChild(inUX); fdUnitsMax.style.display = 'none'; form.appendChild(fdUnitsMax); var fdCity = el('div','field'); var lbCity = el('label'); lbCity.appendChild(txt('City')); var inputCity = el('input'); inputCity.name = 'city'; inputCity.type = 'text'; inputCity.className = 'input'; fdCity.appendChild(lbCity); fdCity.appendChild(inputCity); form.appendChild(fdCity); var fdState = el('div','field'); var lbState = el('label'); lbState.appendChild(txt('State')); var inputState = el('input'); inputState.type = 'text'; inputState.className = 'input'; fdState.appendChild(lbState); fdState.appendChild(inputState); form.appendChild(fdState); var fdMinCap = el('div','field'); var lbCap = el('label'); lbCap.appendChild(txt('Min Cap Rate')); var inCap = el('input'); inCap.name = 'minCap'; inCap.type = 'number'; inCap.className = 'input'; fdMinCap.appendChild(lbCap); fdMinCap.appendChild(inCap); form.appendChild(fdMinCap); var priceWrap = el('div','field'); var lbPrice = el('label'); lbPrice.appendChild(txt('Price Range')); priceWrap.appendChild(lbPrice); var pr = el('div','price-range'); var inMinP = el('input'); inMinP.name = 'minPrice'; inMinP.type = 'number'; inMinP.placeholder = 'Min'; inMinP.className = 'input'; var dash = el('div'); dash.appendChild(txt('to')); var inMaxP = el('input'); inMaxP.name = 'maxPrice'; inMaxP.type = 'number'; inMaxP.placeholder = 'Max'; inMaxP.className = 'input'; pr.appendChild(inMinP); pr.appendChild(dash); pr.appendChild(inMaxP); priceWrap.appendChild(pr); form.appendChild(priceWrap); var btnSearch = el('button','btn'); btnSearch.type = 'submit'; btnSearch.appendChild(txt('Search')); form.appendChild(btnSearch); var resultsDiv = el('div'); card.appendChild(resultsDiv); container.appendChild(card); function updateUnitsVisibility(){ var selected = Array.from(sel.selectedOptions).map(function(o){ return o.value; }); if(selected.includes('Multifamily')){ fdUnitsMin.style.display = ''; fdUnitsMax.style.display = ''; } else { fdUnitsMin.style.display = 'none'; fdUnitsMax.style.display = 'none'; inUM.value = ''; inUX.value = ''; } } sel.addEventListener('change', updateUnitsVisibility); updateUnitsVisibility(); var sample=[ {id:101,name:'Maple Court',city:'Portland',state:'OR',units:16,price:1850000,cap:0.055,type:'Multifamily'}, {id:102,name:'Cedar Flats',city:'Austin',state:'TX',units:12,price:1420000,cap:0.061,type:'Multifamily'}, {id:103,name:'Riverside Retail',city:'Boise',state:'ID',units:4,price:950000,cap:0.068,type:'Retail'} ]; function renderResults(list){ resultsDiv.innerHTML=''; list.forEach(function(p){ var row=el('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='8px'; row.style.border='1px solid var(--border)'; row.style.borderRadius='8px'; row.style.marginBottom='8px'; var left=el('div'); var title=el('div'); title.style.fontWeight='700'; title.appendChild(txt(p.name)); var meta=el('div'); meta.className='muted'; meta.appendChild(txt(p.city + ', ' + p.state + ' • ' + p.units + ' units • Cap ' + fmtPct(p.cap))); left.appendChild(title); left.appendChild(meta); var right=el('div'); right.style.display='flex'; right.style.flexDirection='column'; right.style.gap='6px'; var btnA=el('button','btn-ghost'); btnA.appendChild(txt('Analyze')); btnA.addEventListener('click', function(){ loadPropertyToState(p); }); var btnS=el('button','btn'); btnS.appendChild(txt('Analyze & Save')); btnS.addEventListener('click', function(){ loadPropertyToState(p); State.savedName=p.name; persist(); showToast('Saved (preview)'); }); right.appendChild(btnA); right.appendChild(btnS); row.appendChild(left); row.appendChild(right); resultsDiv.appendChild(row); }); } renderResults(sample); form.addEventListener('submit', function(e){ e.preventDefault(); var filters = { propertyType: sel.selectedOptions ? Array.from(sel.selectedOptions).map(o => o.value) : [], city: inputCity.value, state: inputState.value, minUnits: inUM.value, maxUnits: inUX.value, minCap: inCap.value, minPrice: inMinP.value, maxPrice: inMaxP.value }; var filtered = sample.filter(function(p){ if(filters.propertyType.length > 0 && !filters.propertyType.includes(p.type)) return false; if(filters.city && !p.city.toLowerCase().includes(filters.city.toLowerCase())) return false; if(filters.state && !p.state.toLowerCase().includes(filters.state.toLowerCase())) return false; if(filters.minUnits && p.units < Number(filters.minUnits)) return false; if(filters.maxUnits && p.units > Number(filters.maxUnits)) return false; if(filters.minPrice && p.price < Number(filters.minPrice)) return false; if(filters.maxPrice && p.price > Number(filters.maxPrice)) return false; if(filters.minCap && p.cap < Number(filters.minCap)) return false; return true; }); renderResults(filtered); }); }
 
-    var left=document.createElement('div');
-    var profile=document.createElement('div'); profile.className='card';
-    profile.innerHTML='<h3>Profile</h3>'+
-      '<div class="form-grid">'+
-      '<div class="field"><label>Name</label><input id="pName" class="input" value="'+escapeHtml(state.profile.name)+'"></div>'+
-      '<div class="field"><label>Email</label><input id="pEmail" class="input" value="'+escapeHtml(state.profile.email)+'"></div>'+
-      '<div class="field"><label>Commitment</label><input id="pCommit" class="input" type="number" value="'+(state.profile.commitment||0)+'"></div>'+
-      '<div class="field"><label>Plan</label><input disabled class="input" value="'+(state.isEnterprise?'Enterprise':'Basic')+'"></div>'+
-      '</div>'+ 
-      '<div style="margin-top:10px;display:flex;gap:8px"><button id="saveProfile" class="btn">Save</button><button id="togglePlan" class="btn-ghost">Toggle Plan</button></div>';
-    left.appendChild(profile);
+  function loadPropertyToState(p){ State.deal.meta.address = p.name; State.deal.meta.city = p.city; State.deal.meta.state = p.state; State.deal.meta.price = p.price; State.deal.meta.units = p.units; persist(); enterModuleContent('deal','inputs'); updateTopTiles(); }
 
-    var right=document.createElement('div');
-    var inv=document.createElement('div'); inv.className='card';
-    var list='<h3>Investors</h3>';
-    state.investors.forEach(function(it){ list+='<div style="padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">'+
-      '<div style="font-weight:700">'+escapeHtml(it.name)+'</div>'+ 
-      '<div class="muted" style="font-size:12px">'+escapeHtml(it.contact)+'</div>'+ 
-      '<div class="muted" style="font-size:12px">Committed: '+money(it.committed)+' • Deployed: '+money(it.deployed)+'</div>'+ 
-      '</div>'; });
-    list+='<div style="margin-top:10px;font-weight:700">Add Investor</div>'+
-      '<div class="form-grid" style="margin-top:6px">'+
-      '<input id="newInvName" class="input" placeholder="Name">'+
-      '<input id="newInvContact" class="input" placeholder="Contact">'+
-      '<input id="newInvCommitted" class="input" type="number" placeholder="Committed">'+
-      '<button id="addInvestorBtn" class="btn-ghost">Add</button>'+
-      '</div>';
-    inv.innerHTML=list;
-    right.appendChild(inv);
+  function DealAnalyzerView(){ var root=el('div'); var tabsDiv=el('div','deal-tabs'); var tabs=[{id:'inputs',label:'Inputs'},{id:'financing',label:'Financing'},{id:'t12',label:'T12'},{id:'apod',label:'APOD'}]; var content=el('div'); content.style.marginTop='12px'; tabs.forEach(function(tab,i){ var b=el('button','deal-tab'); if(i===0) b.classList.add('active'); b.appendChild(txt(tab.label)); b.addEventListener('click', function(){ content.innerHTML=''; tabsDiv.querySelectorAll('button').forEach(function(btn){ btn.classList.remove('active'); }); b.classList.add('active'); currentDealTab = tab.id; renderDealTabContent(tab.id, content); updateTopTiles(); }); tabsDiv.appendChild(b); }); root.appendChild(tabsDiv);
+    var kpiDiv = el('div','tiles'); var k=computeTopKPIs(); var list=[ ['NOI', fmtMoney(k.noi)], ['Cap Rate', fmtPct(k.cap)], ['CoC', fmtPct(k.coc)], ['GRM', k.grm ? k.grm.toFixed(2) : '—'], ['Cash Flow (Y1)', fmtMoney(k.cashFlow)] ]; list.forEach(function(it){ var t=el('div','tile'); var lbl=el('div','label'); lbl.appendChild(txt(it[0])); var val=el('div','value'); val.appendChild(txt(it[1])); t.appendChild(lbl); t.appendChild(val); kpiDiv.appendChild(t); }); root.appendChild(kpiDiv);
+    root.appendChild(content); renderDealTabContent('inputs', content); return root; }
 
-    grid.appendChild(left); grid.appendChild(right); root.appendChild(grid);
+  function renderDealTabContent(tabId, container){ currentDealTab = tabId; if(tabId==='inputs') return renderInputsTab(container); if(tabId==='financing') return renderFinancingTab(container); if(tabId==='t12') return renderT12Tab(container); if(tabId==='apod') return renderAPODTab(container); }
 
-    // Events
-    var save=document.getElementById('saveProfile'); if(save){ save.addEventListener('click',function(){ state.profile.name=document.getElementById('pName').value||''; state.profile.email=document.getElementById('pEmail').value||''; state.profile.commitment=Number(document.getElementById('pCommit').value)||0; localStorage.setItem(LS_PROFILE,JSON.stringify(state.profile)); alert('Profile saved'); }); }
-    var tgl=document.getElementById('togglePlan'); if(tgl){ tgl.addEventListener('click',function(){ state.isEnterprise=!state.isEnterprise; render(); }); }
-    var add=document.getElementById('addInvestorBtn'); if(add){ add.addEventListener('click', function(){ var n=(document.getElementById('newInvName').value||'').trim(); if(!n) return alert('Enter name'); var c=(document.getElementById('newInvContact').value||'').trim(); var amt=Number(document.getElementById('newInvCommitted').value)||0; var id=Math.max.apply(null,[0].concat(state.investors.map(function(x){return x.id;})))+1; state.investors.push({id:id,name:n,contact:c,committed:amt,deployed:0}); render(); }); }
-  }
+  function renderInputsTab(container){ container.innerHTML=''; var card=el('div','card'); var m=State.deal.meta||{}; var formGrid=el('div','form-grid'); var fields=[ {label:'Address', name:'address', type:'text'}, {label:'Price', name:'price', type:'number'}, {label:'Units', name:'units', type:'number'}, {label:'Down Payment %', name:'downPaymentPct', type:'number'}, {label:'Year Built', name:'yearBuilt', type:'number'}, {label:'Repair Budget', name:'repairBudget', type:'number'}, {label:'Closing Costs %', name:'closingCostsPct', type:'number'}, {label:'Acquisition Costs', name:'acquisitionCosts', type:'number'}, {label:'ARV', name:'arv', type:'number'}, {label:'Monthly Reserves', name:'reservesMonthly', type:'number'}, {label:'Square Footage', name:'sqft', type:'number'}, {label:'Property Type', name:'type', type:'text'} ]; fields.forEach(function(f){ var fd=el('div','field'); var lb=el('label'); lb.appendChild(txt(f.label)); var input=el('input'); input.name=f.name; input.type=f.type; input.className='input'; input.value = m[f.name] || ''; input.addEventListener('change', function(){ var val = input.type==='number' ? Number(input.value) : input.value; State.deal.meta[f.name] = val; persist(); updateTopTiles(); }); fd.appendChild(lb); fd.appendChild(input); formGrid.appendChild(fd); }); card.appendChild(formGrid); container.appendChild(card); }
 
-  // Deal Analyzer
-  function dealCalcs(){ var d=state.deal; var grossYr1=142440; var vacYr1=grossYr1*(d.vacancyRate||0); var egiYr1=grossYr1-vacYr1+(d.otherIncome||0); var t12TotalAnnual=state.t12.rows.reduce(function(s,r){return s+r.months.reduce(function(a,b){return a+(Number(b)||0);},0);},0); var pmt=monthlyPI(d.loanAmt,d.rate,d.termYears); var ads=pmt*12; var noi=egiYr1-t12TotalAnnual; var cf=noi-ads; var cap=d.price?(noi/d.price):0; var coc=d.downAmt?(cf/d.downAmt):0; return {grossYr1:grossYr1,vacYr1:vacYr1,egiYr1:egiYr1,t12TotalAnnual:t12TotalAnnual,pmt:pmt,ads:ads,noi:noi,cf:cf,cap:cap,coc:coc}; }
+  function renderFinancingTab(container){ container.innerHTML=''; var backRow=el('div','back-row'); var btnBack=el('button','btn-ghost'); btnBack.appendChild(txt('← Back to Deal Analyzer')); btnBack.addEventListener('click', function(){ renderTabsAndLoad('deal'); }); backRow.appendChild(btnBack); container.appendChild(backRow); var card=el('div','card'); var loanList=State.loanScenarios||[]; var currentLoan=loanList[0]||{id:1,loanAmount:0,interestRate:0.06,amortizationYears:30,propertyId:State.deal.meta.address||'default'}; var formGrid=el('div','form-grid'); var fields=[ {label:'Loan Amount', name:'loanAmount', type:'number'}, {label:'Interest Rate', name:'interestRate', type:'number'}, {label:'Amortization Years', name:'amortizationYears', type:'number'}, {label:'Loan Type', name:'loanType', type:'text'}, {label:'Points', name:'points', type:'number'}, {label:'Origination Fee', name:'originationFee', type:'number'}, {label:'Prepayment Penalty (months)', name:'prepaymentPenalty', type:'number'} ]; fields.forEach(function(f){ var fd=el('div','field'); var lb=el('label'); lb.appendChild(txt(f.label)); var input=el('input'); input.name=f.name; input.type=f.type; input.className='input'; input.value=currentLoan[f.name]||''; input.addEventListener('change', function(){ var val=input.type==='number'?Number(input.value):input.value; currentLoan[f.name]=val; persist(); updateTopTiles(); }); fd.appendChild(lb); fd.appendChild(input); formGrid.appendChild(fd); }); card.appendChild(formGrid); var btnSave=el('button','btn'); btnSave.textContent='Save Financing Scenario'; btnSave.addEventListener('click', function(){ currentLoan.propertyId=State.deal.meta.address||'default'; if(!currentLoan.id) currentLoan.id=Date.now(); var idx=loanList.findIndex(l=>l.id===currentLoan.id); if(idx>=0){ loanList[idx]=currentLoan } else { loanList.push(currentLoan) } persist(); showToast('Financing scenario saved'); renderFinancingTab(container); }); card.appendChild(btnSave); var grouped={}; loanList.forEach(function(loan){ var pid=loan.propertyId||'default'; if(!grouped[pid]) grouped[pid]=[]; grouped[pid].push(loan); }); var listDiv=el('div','financing-list'); Object.keys(grouped).forEach(function(pid){ var propTitle=el('h4'); propTitle.textContent=pid; listDiv.appendChild(propTitle); grouped[pid].forEach(function(loan){ var item=el('div','financing-item'); var desc=document.createElement('span'); desc.textContent=`Loan: $${loan.loanAmount||0} @ ${loan.interestRate||0}% for ${loan.amortizationYears||0} years`; var btnEdit=document.createElement('button'); btnEdit.textContent='Edit'; btnEdit.addEventListener('click', function(){ Object.assign(currentLoan, loan); renderFinancingTab(container); }); item.appendChild(desc); item.appendChild(btnEdit); listDiv.appendChild(item); }); }); card.appendChild(listDiv); container.appendChild(card); }
 
-  function renderDealAnalyzer(root){
-    // Header card
-    var head=document.createElement('div'); head.className='card'; head.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center">'+
-      '<div><div style="font-weight:800;font-size:18px">'+escapeHtml(state.deal.name)+'</div><div class="muted" style="font-size:12px">'+escapeHtml(state.deal.market)+'</div></div>'+ 
-      '<div class="muted" style="font-size:12px">Units: '+(state.deal.units||'-')+'</div></div>';
-    root.appendChild(head);
+  function renderT12Tab(container){ container.innerHTML=''; var backRow=el('div','back-row'); var btnBack=el('button','btn-ghost'); btnBack.appendChild(txt('← Back to Deal Analyzer')); btnBack.addEventListener('click', function(){ renderTabsAndLoad('deal'); }); backRow.appendChild(btnBack); container.appendChild(backRow); var card=el('div','card'); var monthNames=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; var startMonth=0; var header=el('div'); header.style.display='flex'; header.style.gap='8px'; header.style.marginBottom='12px'; var lb=el('label'); lb.textContent='Start Month:'; var select=el('select'); monthNames.forEach(function(m,i){ var opt=el('option'); opt.value=i; opt.textContent=m; select.appendChild(opt); }); select.value=startMonth; select.addEventListener('change', function(){ startMonth=Number(select.value); renderT12Table(); }); header.appendChild(lb); header.appendChild(select); card.appendChild(header); var table=el('table'); var thead=el('thead'); var trh=el('tr'); trh.appendChild(el('th')); for(var i=0;i<12;i++){ var th=el('th'); th.textContent=monthNames[(startMonth+i)%12]; trh.appendChild(th) } thead.appendChild(trh); table.appendChild(thead); var tbody=el('tbody'); (State.apod.incomes||[]).forEach(function(it){ if(!Array.isArray(it.monthly)||it.monthly.length<12) it.monthly=new Array(12).fill(it.amount?Number(it.amount)/12:0) }); (State.apod.expenses||[]).forEach(function(it){ if(!Array.isArray(it.monthly)||it.monthly.length<12) it.monthly=new Array(12).fill(it.amount?Number(it.amount)/12:0) }); function renderT12Table(){ tbody.innerHTML=''; (State.apod.incomes||[]).forEach(function(inc){ var tr=el('tr'); var tdlabel=el('td'); tdlabel.textContent=inc.label; tr.appendChild(tdlabel); for(let m=0;m<12;m++){ let col=(startMonth+m)%12; var td=el('td'); var input=el('input'); input.type='number'; input.value=inc.monthly[col]||0; input.style.width='60px'; input.addEventListener('change', function(){ inc.monthly[col]=Number(this.value); persist(); updateTopTiles(); }); td.appendChild(input); tr.appendChild(td) } tbody.appendChild(tr) }); (State.apod.expenses||[]).forEach(function(exp){ var tr=el('tr'); var tdlabel=el('td'); tdlabel.textContent=exp.label; tr.appendChild(tdlabel); for(let m=0;m<12;m++){ let col=(startMonth+m)%12; var td=el('td'); var input=el('input'); input.type='number'; input.value=exp.monthly[col]||0; input.style.width='60px'; input.addEventListener('change', function(){ exp.monthly[col]=Number(this.value); persist(); updateTopTiles(); }); td.appendChild(input); tr.appendChild(td) } tbody.appendChild(tr) }) } table.appendChild(tbody); card.appendChild(table); renderT12Table(); container.appendChild(card) }
 
-    var grid=document.createElement('div'); grid.className='grid-2';
+  function renderAPODTab(container){ container.innerHTML=''; var backRow=el('div','back-row'); var btnBack=el('button','btn-ghost'); btnBack.appendChild(txt('← Back to Deal Analyzer')); btnBack.addEventListener('click', function(){ renderTabsAndLoad('deal'); }); backRow.appendChild(btnBack); container.appendChild(backRow); var card=el('div','card'); var incTitle=el('h4'); incTitle.appendChild(txt('Incomes')); card.appendChild(incTitle); var incTable=el('table'); var incTbody=el('tbody'); (State.apod.incomes||[]).forEach(function(inc,i){ var tr=el('tr'); var tdLabel=el('td'); var inputLabel=el('input'); inputLabel.type='text'; inputLabel.value=inc.label; inputLabel.addEventListener('change', function(){ inc.label=inputLabel.value; persist() }); tdLabel.appendChild(inputLabel); var tdAmount=el('td'); var inputAmount=el('input'); inputAmount.type='number'; inputAmount.value=inc.amount; inputAmount.addEventListener('change', function(){ inc.amount=Number(inputAmount.value); if(!Array.isArray(inc.monthly)||inc.monthly.length<12) inc.monthly=new Array(12).fill(0); inc.monthly=inc.monthly.map(function(){ return Number(inc.amount)/12 }); persist(); updateTopTiles(); }); tdAmount.appendChild(inputAmount); tr.appendChild(tdLabel); tr.appendChild(tdAmount); incTbody.appendChild(tr) }); incTable.appendChild(incTbody); card.appendChild(incTable); var expTitle=el('h4'); expTitle.appendChild(txt('Expenses')); card.appendChild(expTitle); var expTable=el('table'); var expTbody=el('tbody'); (State.apod.expenses||[]).forEach(function(exp,i){ var tr=el('tr'); var tdLabel=el('td'); var inputLabel=el('input'); inputLabel.type='text'; inputLabel.value=exp.label; inputLabel.addEventListener('change', function(){ exp.label=inputLabel.value; persist() }); tdLabel.appendChild(inputLabel); var tdAmount=el('td'); var inputAmount=el('input'); inputAmount.type='number'; inputAmount.value=exp.amount; inputAmount.addEventListener('change', function(){ exp.amount=Number(inputAmount.value); if(!Array.isArray(exp.monthly)||exp.monthly.length<12) exp.monthly=new Array(12).fill(0); exp.monthly=exp.monthly.map(function(){ return Number(exp.amount)/12 }); persist(); updateTopTiles(); }); tdAmount.appendChild(inputAmount); tr.appendChild(tdLabel); tr.appendChild(tdAmount); expTbody.appendChild(tr) }); expTable.appendChild(expTbody); card.appendChild(expTable); container.appendChild(card) }
 
-    // Left column
-    var left=document.createElement('div');
+  var MODULES=[ {id:'hub',title:'Module Hub',desc:'Click a module to open it.'},{id:'dashboard',title:'Investor Dashboard',desc:'Overview of saved deals, performance and alerts'},{id:'finder',title:'Investment Finder',desc:'Search sample properties and load to analyzer'},{id:'deal',title:'Deal Analyzer',desc:'Full inputs, APOD and KPIs'},{id:'docs',title:'Docs & Exports',desc:'Generate LOI and export spreadsheets'} ];
+  function renderHub(){ var area=document.getElementById('moduleArea'); if(!area) return; area.innerHTML=''; var hubCard=el('div','card'); var h=el('h3'); h.appendChild(txt('Module Hub')); hubCard.appendChild(h); var p=el('div'); p.className='muted'; p.appendChild(txt('Click a module to open it.')); hubCard.appendChild(p); var hub=el('div','hub'); MODULES.forEach(function(m){ var t=el('div','hub-tile'); t.setAttribute('data-id',m.id); var h4=el('h4'); h4.appendChild(txt(m.title)); var pd=el('p'); pd.appendChild(txt(m.desc)); t.appendChild(h4); t.appendChild(pd); t.addEventListener('click', function(){ renderTabsAndLoad(m.id); }); hub.appendChild(t) }); hubCard.appendChild(hub); area.appendChild(hubCard) }
 
-    // Inputs card
-    var inp=document.createElement('div'); inp.className='card';
-    inp.innerHTML='<h3>Deal Inputs</h3>'+ 
-      '<div class="form-grid">'+
-      '<div class="field"><label>Purchase Price</label><input id="in_price" class="input" type="number" value="'+(state.deal.price||0)+'"></div>'+
-      '<div class="field"><label>Down %</label><input id="in_downPct" class="input" type="number" step="0.001" value="'+(state.deal.downPct||0.35)+'"></div>'+
-      '<div class="field"><label>Interest Rate (0-1)</label><input id="in_rate" class="input" type="number" step="0.0001" value="'+(state.deal.rate||0.065)+'"></div>'+
-      '<div class="field"><label>Term (years)</label><input id="in_term" class="input" type="number" value="'+(state.deal.termYears||30)+'"></div>'+
-      '<div class="field"><label>Vacancy Rate (0-1)</label><input id="in_vac" class="input" type="number" step="0.001" value="'+(state.deal.vacancyRate||0)+'"></div>'+
-      '<div class="field"><label>Other Income (annual)</label><input id="in_other" class="input" type="number" value="'+(state.deal.otherIncome||0)+'"></div>'+
-      '</div>'+ 
-      '<div style="margin-top:10px; display:flex; gap:8px"><button id="applyDealBtn" class="btn">Apply</button><button id="resetDealBtn" class="btn-ghost">Reset</button></div>';
-    left.appendChild(inp);
+  function DashboardView(){ var d=el('div','card'); var h=el('h3'); h.appendChild(txt('Investor Dashboard')); d.appendChild(h); var p=el('div'); p.className='muted'; p.appendChild(txt('Saved Deal: ' + (State.savedName || '(none)'))); d.appendChild(p); return d }
+  function DocsView(){ var d=el('div','card'); var h=el('h3'); h.appendChild(txt('Docs & Exports')); d.appendChild(h); var p=el('div'); p.className='muted'; p.appendChild(txt('CSV export available in preview. XLSX/Word available in production.')); d.appendChild(p); return d }
 
-    // Metrics tiles
-    var tiles=document.createElement('div'); tiles.className='tiles'; tiles.style.marginTop='12px';
-    var cal=dealCalcs();
-    tiles.innerHTML=
-      tile('Cap Rate', cal.cap? (cal.cap*100).toFixed(2)+'%':'-', rating(cal.cap, 0.055, 0.07))+
-      tile('NOI', money(cal.noi), rating(cal.noi, 60000, 90000))+
-      tile('Annual Debt', money(cal.ads), 'muted')+
-      tile('Cash Flow', money(cal.cf), rating(cal.cf, 0, 30000));
-    left.appendChild(tiles);
+  var tabsRow=document.getElementById('tabsRow');
+  function renderTopTabs(active){ if(!tabsRow) return; tabsRow.innerHTML=''; MODULES.forEach(function(t){ var b=el('button','pill'); if(t.id===active) b.classList.add('active'); b.appendChild(txt(t.title)); b.addEventListener('click', function(){ renderTabsAndLoad(t.id); }); tabsRow.appendChild(b) }) }
 
-    // Scenarios
-    var sc=document.createElement('div'); sc.className='card'; sc.style.marginTop='12px';
-    var shtml='<h3>Financing Scenarios</h3>';
-    state.scenarios.forEach(function(s){ shtml+= '<div style="padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px; display:flex; justify-content:space-between; gap:10px">'+
-      '<div><div style="font-weight:700">'+escapeHtml(s.name)+'</div><div class="muted" style="font-size:12px">Loan: '+money(s.loanAmt)+' • Rate: '+(s.rate*100).toFixed(2)+'% • Term: '+s.termYears+' yrs</div></div>'+ 
-      '<div><button class="btn-ghost applySc" data-sid="'+s.id+'">Apply</button></div></div>'; });
-    shtml+='<button id="addScenarioBtn" class="btn-ghost">+ Add Scenario</button>';
-    sc.innerHTML=shtml; left.appendChild(sc);
+  function renderTabsAndLoad(active){ currentModule=active; inModuleContent=false; currentDealTab='inputs'; renderTopTabs(active); var area=document.getElementById('moduleArea'); if(!area) return; area.innerHTML=''; if(active==='hub'){ renderHub(); updateTopTiles(); return } var tilesScreen=renderModuleTilesScreen(active); area.appendChild(tilesScreen); var hint=el('div'); hint.className='muted'; hint.style.marginBottom='12px'; hint.appendChild(txt('Tap a tile to enter the module.')); area.appendChild(hint); updateTopTiles() }
 
-    // Right column
-    var right=document.createElement('div');
+  function enterModuleContent(moduleId, tileId){ var area=document.getElementById('moduleArea'); if(!area) return; area.innerHTML=''; inModuleContent=true; currentModule=moduleId; var back=el('div'); back.className='back-row'; var btnBack=el('button','btn-ghost'); btnBack.appendChild(txt('← Back to ' + (moduleTitleMap[moduleId]||'Module'))); btnBack.addEventListener('click', function(){ renderTabsAndLoad(moduleId) }); back.appendChild(btnBack); area.appendChild(back); if(moduleId==='dashboard') area.appendChild(DashboardView()); else if(moduleId==='finder'){ var wrapper=document.createElement('div'); FinderRender(wrapper); area.appendChild(wrapper) } else if(moduleId==='deal'){ var da=DealAnalyzerView(); area.appendChild(da); if(tileId){ var map={inputs:0,financing:1,t12:2,apod:3}; var idx=map[tileId]; if(typeof idx!=='undefined'){ setTimeout(function(){ var tabs=da.querySelectorAll('.deal-tab'); if(tabs && tabs[idx]) tabs[idx].click() },60) } } } else if(moduleId==='docs') area.appendChild(DocsView()); else area.appendChild(el('div')); updateTopTiles() }
 
-    // T12 card
-    var t12=document.createElement('div'); t12.className='card';
-    var period=buildPeriod(state.t12.startMonth, state.t12.startYear);
-    var t12h='<h3>T12</h3><div class="muted" style="font-size:12px">Start: '+period[0].label+'</div>';
-    t12h+='<div style="margin-top:8px"><table><thead><tr><th>Category</th><th class="num">Annual</th></tr></thead><tbody>';
-    state.t12.rows.forEach(function(row){ var total=row.months.reduce(function(a,b){return a+(Number(b)||0);},0); t12h+='<tr><td>'+escapeHtml(row.category)+'</td><td class="num">'+money(total)+'</td></tr>'; });
-    t12h+='</tbody></table></div><div style="margin-top:8px"><button id="exportT12" class="btn-ghost">Export CSV</button></div>';
-    t12.innerHTML=t12h; right.appendChild(t12);
+  document.addEventListener('keydown', function(e){ if(e.ctrlKey && e.key==='e'){ showToast('Export (preview)') } });
+  var themeToggleBtn=document.getElementById('themeToggle'); themeToggleBtn.addEventListener('click', function(){ var body=document.body; if(body.getAttribute('data-theme')==='dark'){ body.setAttribute('data-theme','light'); themeToggleBtn.style.color='#fff'; themeToggleBtn.style.borderColor='#fff'; } else { body.setAttribute('data-theme','dark'); themeToggleBtn.style.color='#000'; themeToggleBtn.style.borderColor='#000'; } });
 
-    // APOD card
-    var apod=document.createElement('div'); apod.className='card'; apod.style.marginTop='12px';
-    var ap=dealCalcs();
-    apod.innerHTML='<h3>APOD</h3>'+
-      '<div class="muted" style="font-size:12px">Year 1</div>'+ 
-      '<div style="margin-top:8px">GSI: <b>'+money(ap.grossYr1)+'</b></div>'+ 
-      '<div>NOI: <b>'+money(ap.noi)+'</b></div>'+ 
-      '<div>Cash Flow: <b>'+money(ap.cf)+'</b></div>';
-    right.appendChild(apod);
-
-    grid.appendChild(left); grid.appendChild(right); root.appendChild(grid);
-
-    // Bindings
-    var apply=document.getElementById('applyDealBtn'); if(apply){ apply.addEventListener('click',function(){
-      state.deal.price=Number(document.getElementById('in_price').value)||0;
-      state.deal.downPct=Number(document.getElementById('in_downPct').value)||0;
-      state.deal.downAmt=state.deal.price*state.deal.downPct;
-      state.deal.loanAmt=state.deal.price-state.deal.downAmt;
-      state.deal.rate=Number(document.getElementById('in_rate').value)||0;
-      state.deal.termYears=Number(document.getElementById('in_term').value)||30;
-      state.deal.vacancyRate=Number(document.getElementById('in_vac').value)||0;
-      state.deal.otherIncome=Number(document.getElementById('in_other').value)||0;
-      render();
-    }); }
-    var reset=document.getElementById('resetDealBtn'); if(reset){ reset.addEventListener('click',function(){ state.deal={ name:'123 Main St', market:'Anytown, USA', price:1500000, units:14, downPct:0.35, downAmt:525000, loanAmt:975000, rate:0.065, termYears:30, closingCostPct:0.03, rehab:50000, vacancyRate:0.06, otherIncome:0, saleCap:0.06, sellCostPct:0.05 }; render(); }); }
-    var btns=document.getElementsByClassName('applySc'); for(var j=0;j<btns.length;j++){ btns[j].addEventListener('click', function(ev){ var sid=Number(ev.target.getAttribute('data-sid')); var sc=state.scenarios.find(function(x){return x.id===sid;}); if(sc){ state.deal.loanAmt=sc.loanAmt; state.deal.rate=sc.rate; state.deal.termYears=sc.termYears; state.deal.downAmt=state.deal.price-state.deal.loanAmt; render(); } }); }
-    var exp=document.getElementById('exportT12'); if(exp){ exp.addEventListener('click', function(){ var rows=[['Category','Annual']]; state.t12.rows.forEach(function(r){ var total=r.months.reduce(function(a,b){return a+(Number(b)||0);},0); rows.push([r.category,total]); }); var csv=rows.map(function(r){ return r.map(function(c){ var s=String(c); if(s.indexOf(',')!==-1) s='"'+s.replace(/"/g,'""')+'"'; return s; }).join(','); }).join('\n'); downloadFile('t12_export.csv', csv, 'text/csv'); }); }
-  }
-
-  function tile(label, value, cls){ return '<div class="tile '+(cls||'')+'"><div class="label">'+label+'</div><div class="value">'+value+'</div></div>'; }
-  function rating(val, warnCut, okCut){ if(val==null||isNaN(val)) return 'muted'; if(val>=okCut) return 'ok'; if(val>=warnCut) return 'warn'; return 'bad'; }
-
-  // Finder (kept light)
-  function renderFinder(root){ var c=document.createElement('div'); c.className='card'; c.innerHTML='<h3>Finder</h3><div class="muted" style="font-size:12px">Search sample listings and open in Analyzer.</div><div style="margin-top:8px"><button id="openSample" class="btn">Open Sample Deal</button></div>'; root.appendChild(c); var b=document.getElementById('openSample'); if(b) b.addEventListener('click', function(){ state.deal={ name:'Sample 14-unit', market:'Orlando, FL', price:1500000, units:14, downPct:0.35, downAmt:525000, loanAmt:975000, rate:0.065, termYears:30, vacancyRate:0.06, otherIncome:0 }; state.activeModule='dealanalyzer'; localStorage.setItem(LS_ACTIVE,'dealanalyzer'); render(); }); }
-
-  // Render root
-  function render(){ try{ renderModuleTabs(); var root=document.getElementById('app'); if(!root) return; clear(root); if(state.activeModule==='dashboard') renderDashboard(root); else if(state.activeModule==='finder') renderFinder(root); else if(state.activeModule==='dealanalyzer') renderDealAnalyzer(root); else root.appendChild(document.createTextNode('Unknown module')); console.log('render completed; activeModule=', state.activeModule); }catch(err){ console.error('Render error', err); var r=document.getElementById('app'); if(r) r.innerHTML='<div class="card" style="border-color:#ef4444;background:#fff6f6;color:#7f1d1d">An error occurred during render. See console.</div>'; } }
-
-  // Theme toggle
-  var themeBtn=document.getElementById('themeToggle'); if(themeBtn){ themeBtn.addEventListener('click', function(){ var cur=localStorage.getItem(LS_THEME)||'light'; var next=(cur==='light')?'dark':'light'; applyTheme(next); }); }
-
-  // Init
-  try{ render(); }catch(e){ console.error('Startup error', e); }
-
+  renderTabsAndLoad('hub'); updateTopTiles(); window.State=State; window.enterModuleContent=enterModuleContent; window.renderTabsAndLoad=renderTabsAndLoad;
 })();
