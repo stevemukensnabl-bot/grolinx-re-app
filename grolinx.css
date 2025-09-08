@@ -241,3 +241,21 @@ html, body {
   #moduleArea .tiles { grid-template-columns: repeat(2, 1fr) !important; }
   #moduleArea .form-grid { grid-template-columns: repeat(1, 1fr); }
 }
+#moduleArea .card,
+#moduleArea .tile,
+#moduleArea .module-tile,
+#moduleArea input,
+#moduleArea select,
+#moduleArea textarea,
+#moduleArea button.btn,
+#moduleArea button.btn-ghost,
+#moduleArea table,
+#moduleArea table th,
+#moduleArea table td {
+  background-color: var(--bg-card, #fff) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
+  border: 1px solid rgba(15,23,42,0.06) !important;
+  border-radius: 8px !important;
+  padding: 8px !important;
+  color: var(--text, #0f172a) !important;
+}
