@@ -196,3 +196,28 @@ html, body {
 #moduleArea .deal-tab.active {
   /* only use !important where necessary to overcome host CSS */
 }
+#moduleArea .module-tile {
+  min-width: 180px;
+  max-width: 340px;
+  flex: 1 1 220px;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
+  cursor: pointer;
+  color: var(--text, #0f172a);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#moduleArea .module-tile h5 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+}
+
+#moduleArea .module-tile .muted {
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
