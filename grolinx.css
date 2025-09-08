@@ -1,6 +1,6 @@
-/* Updated Grolinx CSS - includes robust variable defaults and fallbacks */
+/* grolinx.css — Clean production-ready styles for Grolinx RE Investment App */
 
-/* Define variables on html/body and provide fallback values inline where used */
+/* Robust theme variables (defined on html/body and :root for broad compatibility) */
 html, body {
   --text: #0f172a;
   --muted: #64748b;
@@ -12,7 +12,6 @@ html, body {
   --kpi-bg-to: #dbeffd;
 }
 
-/* Ensure :root fallback for environments that read it */
 :root {
   --text: #0f172a;
   --muted: #64748b;
@@ -24,8 +23,12 @@ html, body {
   --kpi-bg-to: #dbeffd;
 }
 
-/* Grolinx module-area scoped styles (permanent) */
-#moduleArea, #moduleArea * { box-sizing: border-box; -webkit-font-smoothing:antialiased; }
+/* Scope everything to #moduleArea to avoid global conflicts */
+#moduleArea, #moduleArea * {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
 /* Card */
 #moduleArea .card {
@@ -38,16 +41,21 @@ html, body {
 }
 
 /* Muted text */
-#moduleArea .muted { color: var(--muted, #64748b); }
+#moduleArea .muted {
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
 
-/* Hub / tiles */
-#moduleArea .hub, #moduleArea .module-tiles {
+/* Hub / module tiles container */
+#moduleArea .hub,
+#moduleArea .module-tiles {
   display: flex !important;
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 12px;
 }
 
+/* Module tile (used on Module Hub and module tiles) */
 #moduleArea .hub-tile,
 #moduleArea .module-tile {
   min-width: 180px;
@@ -60,44 +68,49 @@ html, body {
   box-shadow: 0 6px 18px rgba(16,24,40,0.04);
   cursor: pointer;
   color: var(--text, #0f172a);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-
-#moduleArea .hub-tile h4, #moduleArea .module-tile h5 {
+#moduleArea .hub-tile h4,
+#moduleArea .module-tile h5 {
   margin: 0 0 6px 0;
   font-size: 16px;
 }
 
-/* KPI tiles grid */
+/* KPI tiles grid and individual KPI tile (tile kept for Deal Analyzer) */
 #moduleArea .tiles {
   display: grid !important;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   margin-bottom: 12px;
 }
-
 #moduleArea .tile {
   padding: 12px;
   border-radius: 10px;
   background: linear-gradient(135deg, var(--kpi-bg-from, #eaf6ff), var(--kpi-bg-to, #dbeffd));
   text-align: center;
   color: var(--text, #0f172a);
+  box-shadow: 0 4px 10px rgba(11,58,98,0.04);
 }
-
 #moduleArea .tile .label {
   font-weight: 600;
   color: var(--primary-600, #0369a1);
   font-size: 13px;
 }
-
 #moduleArea .tile .value {
   font-weight: 800;
   font-size: 18px;
   margin-top: 6px;
 }
 
-/* Tabs */
-#moduleArea .deal-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-
+/* Deal tabs */
+#moduleArea .deal-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
 #moduleArea .deal-tab {
   padding: 8px 12px;
   border-radius: 999px;
@@ -106,24 +119,27 @@ html, body {
   cursor: pointer;
   color: var(--text, #0f172a);
 }
-
 #moduleArea .deal-tab.active {
   background: var(--primary, #0b6fb5);
   color: #fff;
   border-color: var(--primary, #0b6fb5);
+  box-shadow: 0 6px 14px rgba(11,58,98,0.08);
 }
 
-/* Forms/grid */
+/* Layout grid for forms */
 #moduleArea .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: start;
 }
+#moduleArea .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
-#moduleArea .field { display: flex; flex-direction: column; gap: 6px; }
-
-/* Inputs */
+/* Inputs, selects, textareas */
 #moduleArea input[type="text"],
 #moduleArea input[type="number"],
 #moduleArea select,
@@ -135,6 +151,15 @@ html, body {
   color: var(--text, #0f172a);
   width: 100%;
   min-height: 36px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+#moduleArea input:focus,
+#moduleArea select:focus,
+#moduleArea textarea:focus {
+  border-color: var(--primary, #0b6fb5);
+  outline: none;
+  box-shadow: 0 0 8px rgba(11,111,181,0.12);
 }
 
 /* Buttons */
@@ -144,36 +169,64 @@ html, body {
   border-radius: 8px;
   padding: 8px 10px;
   cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
-
 #moduleArea .btn {
   background: var(--primary, #0b6fb5);
   color: #fff;
   border: 0;
   box-shadow: 0 6px 14px rgba(11,58,98,0.08);
 }
-
+#moduleArea .btn:hover { filter: brightness(0.95); }
 #moduleArea .btn-ghost {
   background: transparent;
   color: var(--text, #0f172a);
   border: 1px solid rgba(15,23,42,0.06);
 }
+#moduleArea .btn-ghost:hover {
+  background: rgba(11,111,181,0.06);
+}
 
 /* Tables */
 #moduleArea table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 8px;
+  overflow: hidden;
   margin-top: 10px;
 }
-
 #moduleArea table th,
 #moduleArea table td {
-  border: 1px solid rgba(15,23,42,0.06);
-  padding: 8px;
+  padding: 10px 12px;
   text-align: left;
-  font-size: 13px;
-  background: var(--bg-card, #fff);
+  font-size: 14px;
   color: var(--text, #0f172a);
+  background: var(--bg-card, #fff);
+  border-bottom: 1px solid rgba(15,23,42,0.06);
+}
+#moduleArea table th {
+  font-weight: 600;
+  background: linear-gradient(180deg, #f9fafb, #f3f4f6);
+}
+
+/* Back row / small utilities */
+#moduleArea .back-row { margin-bottom: 12px; }
+#moduleArea .label { font-weight: 600; color: var(--text, #0f172a); }
+#moduleArea .value { font-weight: 800; color: var(--text, #0f172a); }
+
+/* Toast (kept minimal) */
+#toast {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  background: #111;
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  display: none;
+  z-index: 9999;
 }
 
 /* Force visibility of module area */
@@ -183,41 +236,8 @@ html, body {
   opacity: 1 !important;
 }
 
-/* Small screens */
-@media (max-width:720px) {
+/* Responsive adjustments */
+@media (max-width: 720px) {
   #moduleArea .tiles { grid-template-columns: repeat(2, 1fr) !important; }
   #moduleArea .form-grid { grid-template-columns: repeat(1, 1fr); }
-}
-
-/* Fallback enforced rules in case host overrides variables (use sparingly) */
-#moduleArea .card,
-#moduleArea .tile,
-#moduleArea .btn,
-#moduleArea .deal-tab.active {
-  /* only use !important where necessary to overcome host CSS */
-}
-#moduleArea .module-tile {
-  min-width: 180px;
-  max-width: 340px;
-  flex: 1 1 220px;
-  background: linear-gradient(180deg, #ffffff, #fbfdff);
-  border-radius: 10px;
-  padding: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
-  cursor: pointer;
-  color: var(--text, #0f172a);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-#moduleArea .module-tile h5 {
-  margin: 0 0 6px 0;
-  font-size: 16px;
-}
-
-#moduleArea .module-tile .muted {
-  color: var(--muted, #64748b);
-  font-size: 13px;
 }
